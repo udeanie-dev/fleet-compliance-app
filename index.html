@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fleet Compliance App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial; padding: 20px;">
+
+  <h1>Fleet Compliance Reminder</h1>
+
+  <h3>Add Document</h3>
+  <input id="name" placeholder="Driver / Vehicle" /><br><br>
+  <input id="doc" placeholder="Document Type" /><br><br>
+  <input id="date" type="date" /><br><br>
+
+  <button onclick="addDoc()">Save</button>
+
+  <h3>Documents</h3>
+  <ul id="list"></ul>
+
+<script>
+let docs = [];
+
+function addDoc() {
+  const name = document.getElementById("name").value;
+  const doc = document.getElementById("doc").value;
+  const date = document.getElementById("date").value;
+
+  docs.push({ name, doc, date });
+  render();
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  docs.forEach(d => {
+    const li = document.createElement("li");
+    li.innerText = d.name + " - " + d.doc + " - Expiry: " + d.date;
+    list.appendChild(li);
+  });
+}
+</script>
+
+</body>
+</html>
