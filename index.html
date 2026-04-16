@@ -91,10 +91,42 @@ async function loadDocs() {
     const data = doc.data();
     const li = document.createElement("li");
 
-    li.innerHTML = `
-      ${data.name} - ${data.docType} - Expiry: ${data.date} - Reminder: ${data.email || ""}
-      ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
-    `;
+    const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const expiry = new Date(data.date);
+expiry.setHours(0, 0, 0, 0);
+
+const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+
+let status = "";
+let color = "black";
+
+if (diffDays < 0) {
+  status = "❌ EXPIRED";
+  color = "red";
+} else if (diffDays <= 1) {
+  status = "⚠️ DUE TOMORROW";
+  color = "orange";
+} else if (diffDays <= 7) {
+  status = "⚠️ DUE IN 7 DAYS";
+  color = "darkorange";
+} else if (diffDays <= 30) {
+  status = "⚠️ DUE IN 30 DAYS";
+  color = "goldenrod";
+} else {
+  status = "✅ VALID";
+  color = "green";
+}
+
+li.innerHTML = `
+  <span style="color:${color}; font-weight:bold;">
+    ${data.name} - ${data.docType} - Expiry: ${data.date} (${status})
+  </span>
+  <br>
+  Reminder: ${data.email || ""}
+  ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
+`;
 
     list.appendChild(li);
   });
