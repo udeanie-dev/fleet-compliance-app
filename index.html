@@ -14,7 +14,7 @@
 <input id="date" type="date" /><br><br>
 <input id="file" type="file" /><br><br>
 <input id="email" type="email" placeholder="Reminder Email" /><br><br>
-  
+
 <button onclick="addDoc()">Save</button>
 
 <h3>Documents</h3>
@@ -39,42 +39,47 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 window.addDoc = async function () {
-const name = document.getElementById("name").value;
-const docType = document.getElementById("doc").value;
-const date = document.getElementById("date").value;
-const file = document.getElementById("file").files[0];
-const email = document.getElementById("email").value;
+  try {
+    const name = document.getElementById("name").value.trim();
+    const docType = document.getElementById("doc").value.trim();
+    const date = document.getElementById("date").value;
+    const file = document.getElementById("file").files[0];
+    const email = document.getElementById("email").value.trim();
 
-  if (!name || !docType || !date) {
     if (!name || !docType || !date || !email) {
-  alert("Please fill in name, document type, expiry date, and reminder email.");
-  return;
-}
+      alert("Please fill in name, document type, expiry date, and reminder email.");
+      return;
+    }
 
-  let imageUrl = "";
+    let imageUrl = "";
 
-  if (file) {
-    const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
-    await uploadBytes(storageRef, file);
-    imageUrl = await getDownloadURL(storageRef);
+    if (file) {
+      const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
+      await uploadBytes(storageRef, file);
+      imageUrl = await getDownloadURL(storageRef);
+    }
+
+    await addFirestoreDoc(collection(db, "documents"), {
+      name,
+      docType,
+      date,
+      email,
+      imageUrl,
+      created: new Date().toISOString()
+    });
+
+    document.getElementById("name").value = "";
+    document.getElementById("doc").value = "";
+    document.getElementById("date").value = "";
+    document.getElementById("file").value = "";
+    document.getElementById("email").value = "";
+
+    await loadDocs();
+    alert("Document saved.");
+  } catch (error) {
+    console.error(error);
+    alert("Save failed. Please try again.");
   }
-
-  await addFirestoreDoc(collection(db, "documents"), {
-  name,
-  docType,
-  date,
-  email,
-  imageUrl,
-  created: new Date().toISOString()
-});
-
-document.getElementById("name").value = "";
-document.getElementById("doc").value = "";
-document.getElementById("date").value = "";
-document.getElementById("file").value = "";
-document.getElementById("email").value = "";
-
-  loadDocs();
 };
 
 async function loadDocs() {
@@ -86,36 +91,10 @@ async function loadDocs() {
     const data = doc.data();
     const li = document.createElement("li");
 
-  const today = new Date();
-const expiry = new Date(data.date);
-const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-
-let status = "";
-let color = "black";
-
-if (diffDays < 0) {
-  status = "❌ EXPIRED";
-  color = "red";
-} else if (diffDays <= 1) {
-  status = "⚠️ DUE TOMORROW";
-  color = "orange";
-} else if (diffDays <= 7) {
-  status = "⚠️ DUE IN 7 DAYS";
-  color = "orange";
-} else if (diffDays <= 30) {
-  status = "⚠️ DUE IN 30 DAYS";
-  color = "goldenrod";
-} else {
-  status = "✅ VALID";
-  color = "green";
-}
-
-li.innerHTML = `
-  <span style="color:${color}; font-weight:bold;">
-    ${data.name} - ${data.docType} - Expiry: ${data.date} (${status})
-  </span>
-  ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
-`;
+    li.innerHTML = `
+      ${data.name} - ${data.docType} - Expiry: ${data.date} - Reminder: ${data.email || ""}
+      ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
+    `;
 
     list.appendChild(li);
   });
