@@ -12,6 +12,7 @@
 <input id="name" placeholder="Driver / Vehicle" /><br><br>
 <input id="doc" placeholder="Document Type" /><br><br>
 <input id="date" type="date" /><br><br>
+<input id="file" type="file" /><br><br>
 
 <button onclick="addDoc()">Save</button>
 
@@ -20,7 +21,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc as addFirestoreDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8",
@@ -33,18 +35,39 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 window.addDoc = async function () {
   const name = document.getElementById("name").value;
-  const doc = document.getElementById("doc").value;
+  const docType = document.getElementById("doc").value;
   const date = document.getElementById("date").value;
+  const file = document.getElementById("file").files[0];
 
-  await addDoc(collection(db, "documents"), {
+  if (!name || !docType || !date) {
+    alert("Please fill in name, document type, and expiry date.");
+    return;
+  }
+
+  let imageUrl = "";
+
+  if (file) {
+    const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
+    await uploadBytes(storageRef, file);
+    imageUrl = await getDownloadURL(storageRef);
+  }
+
+  await addFirestoreDoc(collection(db, "documents"), {
     name,
-    doc,
+    docType,
     date,
-    created: new Date()
+    imageUrl,
+    created: new Date().toISOString()
   });
+
+  document.getElementById("name").value = "";
+  document.getElementById("doc").value = "";
+  document.getElementById("date").value = "";
+  document.getElementById("file").value = "";
 
   loadDocs();
 };
@@ -57,7 +80,12 @@ async function loadDocs() {
   querySnapshot.forEach((doc) => {
     const data = doc.data();
     const li = document.createElement("li");
-    li.innerText = data.name + " - " + data.doc + " - Expiry: " + data.date;
+
+    li.innerHTML = `
+      ${data.name} - ${data.docType} - Expiry: ${data.date}
+      ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
+    `;
+
     list.appendChild(li);
   });
 }
