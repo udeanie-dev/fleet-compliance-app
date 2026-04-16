@@ -39,15 +39,17 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 window.addDoc = async function () {
-  const name = document.getElementById("name").value;
-  const docType = document.getElementById("doc").value;
-  const date = document.getElementById("date").value;
-  const file = document.getElementById("file").files[0];
+const name = document.getElementById("name").value;
+const docType = document.getElementById("doc").value;
+const date = document.getElementById("date").value;
+const file = document.getElementById("file").files[0];
+const email = document.getElementById("email").value;
 
   if (!name || !docType || !date) {
-    alert("Please fill in name, document type, and expiry date.");
-    return;
-  }
+    if (!name || !docType || !date || !email) {
+  alert("Please fill in name, document type, expiry date, and reminder email.");
+  return;
+}
 
   let imageUrl = "";
 
@@ -58,17 +60,19 @@ window.addDoc = async function () {
   }
 
   await addFirestoreDoc(collection(db, "documents"), {
-    name,
-    docType,
-    date,
-    imageUrl,
-    created: new Date().toISOString()
-  });
+  name,
+  docType,
+  date,
+  email,
+  imageUrl,
+  created: new Date().toISOString()
+});
 
-  document.getElementById("name").value = "";
-  document.getElementById("doc").value = "";
-  document.getElementById("date").value = "";
-  document.getElementById("file").value = "";
+document.getElementById("name").value = "";
+document.getElementById("doc").value = "";
+document.getElementById("date").value = "";
+document.getElementById("file").value = "";
+document.getElementById("email").value = "";
 
   loadDocs();
 };
