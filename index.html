@@ -68,6 +68,15 @@ window.addDoc = async function () {
       created: new Date().toISOString()
     });
 
+// SEND TEST EMAIL IMMEDIATELY
+await addFirestoreDoc(collection(db, "mail"), {
+  to: email,
+  message: {
+    subject: `Test Reminder: ${docType}`,
+    text: `${name}'s ${docType} expires on ${date}`
+  }
+});
+
     document.getElementById("name").value = "";
     document.getElementById("doc").value = "";
     document.getElementById("date").value = "";
