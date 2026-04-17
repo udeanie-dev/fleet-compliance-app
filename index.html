@@ -3,35 +3,199 @@
 <head>
   <title>Fleet Compliance App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    button {
+      background: #0b5ed7;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #094db1;
+    }
+
+    .secondary-btn {
+      background: #6c757d;
+    }
+
+    .secondary-btn:hover {
+      background: #5a6268;
+    }
+
+    .status {
+      font-weight: bold;
+    }
+
+    .list-item {
+      border-bottom: 1px solid #eee;
+      padding: 12px 0;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .row-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef3ff;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+
+    @media (max-width: 700px) {
+      .row-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body style="font-family: Arial; padding: 20px;">
+<body>
+  <div class="container">
+    <h1>Fleet Compliance Reminder</h1>
 
-  <h1>Fleet Compliance Reminder</h1>
+    <div class="card">
+      <h2>Register Master Data</h2>
+      <div class="grid">
+        <div>
+          <h3>Add Driver</h3>
+          <input id="newDriver" placeholder="Enter driver name" />
+          <button onclick="addDriver()">Save Driver</button>
+        </div>
 
-  <h3>Add Document</h3>
+        <div>
+          <h3>Add Fleet Number</h3>
+          <input id="newFleet" placeholder="Enter fleet number" />
+          <button onclick="addFleet()">Save Fleet Number</button>
+        </div>
 
-  <select id="category"><br><br>
-    <option value="Driver">Driver</option>
-    <option value="Vehicle">Vehicle</option>
-    <option value="Trailer">Trailer</option>
-    <option value="Company">Company</option>
-  </select><br><br>
+        <div>
+          <h3>Add Document Type</h3>
+          <input id="newDocType" placeholder="Enter document type" />
+          <button onclick="addDocumentType()">Save Document Type</button>
+        </div>
+      </div>
+    </div>
 
-  <input id="name" placeholder="Driver / Vehicle / Trailer / Company Name" /><br><br>
-  <input id="doc" placeholder="Document Type" /><br><br>
-  <input id="date" type="date" /><br><br>
-  <input id="file" type="file" /><br><br>
-  <input id="email" type="email" placeholder="Reminder Email" /><br><br>
+    <div class="card">
+      <h2>Add Compliance Document</h2>
 
-  <button onclick="addDoc()">Save</button>
+      <label>Driver</label>
+      <select id="driverSelect"></select>
 
-  <h3>Documents</h3>
-  <ul id="list"></ul>
+      <label>Fleet Number</label>
+      <select id="fleetSelect"></select>
+
+      <label>Document Type</label>
+      <select id="docTypeSelect"></select>
+
+      <label>Or type a new document type</label>
+      <input id="customDocType" placeholder="Example: Fire Training Certificate" />
+
+      <label>Expiry Date</label>
+      <input id="date" type="date" />
+
+      <label>Reminder Email</label>
+      <input id="email" type="email" placeholder="Reminder Email" />
+
+      <label>Upload Document</label>
+      <input id="file" type="file" />
+
+      <button onclick="saveDocument()">Save Document</button>
+    </div>
+
+    <div class="card">
+      <h2>Saved Drivers / Fleets / Document Types</h2>
+      <div class="grid">
+        <div>
+          <h3>Drivers</h3>
+          <div id="driversList"></div>
+        </div>
+        <div>
+          <h3>Fleet Numbers</h3>
+          <div id="fleetsList"></div>
+        </div>
+        <div>
+          <h3>Document Types</h3>
+          <div id="docTypesList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Saved Documents</h2>
+      <div id="documentsList"></div>
+    </div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc as addFirestoreDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8",
@@ -46,18 +210,218 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    window.addDoc = async function () {
-      try {
-        const category = document.getElementById("category").value;
-        const name = document.getElementById("name").value.trim();
-        const docType = document.getElementById("doc").value.trim();
-        const date = document.getElementById("date").value;
-        const file = document.getElementById("file").files[0];
-        const email = document.getElementById("email").value.trim();
+    let drivers = [];
+    let fleets = [];
+    let documentTypes = [];
+    let documents = [];
 
-        if (!category || !name || !docType || !date || !email) {
-          alert("Please fill in category, name, document type, expiry date, and reminder email.");
+    function sortByName(arr, field) {
+      return arr.sort((a, b) => (a[field] || "").localeCompare(b[field] || ""));
+    }
+
+    function getStatusInfo(dateString) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const expiry = new Date(dateString);
+      expiry.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) return { text: "❌ EXPIRED", color: "red" };
+      if (diffDays === 0) return { text: "⚠️ EXPIRES TODAY", color: "orange" };
+      if (diffDays === 1) return { text: "⚠️ DUE TOMORROW", color: "orange" };
+      if (diffDays <= 7) return { text: "⚠️ DUE IN 7 DAYS", color: "darkorange" };
+      if (diffDays <= 30) return { text: "⚠️ DUE IN 30 DAYS", color: "goldenrod" };
+      return { text: "✅ VALID", color: "green" };
+    }
+
+    async function loadDrivers() {
+      const snap = await getDocs(collection(db, "drivers"));
+      drivers = [];
+      snap.forEach((d) => drivers.push({ id: d.id, ...d.data() }));
+      sortByName(drivers, "name");
+      renderDrivers();
+      renderDriverDropdown();
+    }
+
+    async function loadFleets() {
+      const snap = await getDocs(collection(db, "fleets"));
+      fleets = [];
+      snap.forEach((d) => fleets.push({ id: d.id, ...d.data() }));
+      sortByName(fleets, "fleetNumber");
+      renderFleets();
+      renderFleetDropdown();
+    }
+
+    async function loadDocumentTypes() {
+      const snap = await getDocs(collection(db, "documentTypes"));
+      documentTypes = [];
+      snap.forEach((d) => documentTypes.push({ id: d.id, ...d.data() }));
+      sortByName(documentTypes, "name");
+      renderDocumentTypes();
+      renderDocumentTypeDropdown();
+    }
+
+    async function loadDocuments() {
+      const snap = await getDocs(collection(db, "documents"));
+      documents = [];
+      snap.forEach((d) => documents.push({ id: d.id, ...d.data() }));
+      documents.sort((a, b) => (a.driverName || "").localeCompare(b.driverName || ""));
+      renderDocuments();
+    }
+
+    function renderDriverDropdown() {
+      const select = document.getElementById("driverSelect");
+      select.innerHTML = `<option value="">Select Driver</option>`;
+      drivers.forEach((driver) => {
+        select.innerHTML += `<option value="${driver.name}">${driver.name}</option>`;
+      });
+    }
+
+    function renderFleetDropdown() {
+      const select = document.getElementById("fleetSelect");
+      select.innerHTML = `<option value="">Select Fleet Number</option>`;
+      fleets.forEach((fleet) => {
+        select.innerHTML += `<option value="${fleet.fleetNumber}">${fleet.fleetNumber}</option>`;
+      });
+    }
+
+    function renderDocumentTypeDropdown() {
+      const select = document.getElementById("docTypeSelect");
+      select.innerHTML = `<option value="">Select Document Type</option>`;
+      documentTypes.forEach((type) => {
+        select.innerHTML += `<option value="${type.name}">${type.name}</option>`;
+      });
+    }
+
+    function renderDrivers() {
+      const box = document.getElementById("driversList");
+      box.innerHTML = drivers.length
+        ? drivers.map(d => `<div class="list-item">${d.name}</div>`).join("")
+        : `<div class="small">No drivers saved yet.</div>`;
+    }
+
+    function renderFleets() {
+      const box = document.getElementById("fleetsList");
+      box.innerHTML = fleets.length
+        ? fleets.map(f => `<div class="list-item">${f.fleetNumber}</div>`).join("")
+        : `<div class="small">No fleet numbers saved yet.</div>`;
+    }
+
+    function renderDocumentTypes() {
+      const box = document.getElementById("docTypesList");
+      box.innerHTML = documentTypes.length
+        ? documentTypes.map(t => `<div class="list-item">${t.name}</div>`).join("")
+        : `<div class="small">No document types saved yet.</div>`;
+    }
+
+    function renderDocuments() {
+      const box = document.getElementById("documentsList");
+      if (!documents.length) {
+        box.innerHTML = `<div class="small">No documents saved yet.</div>`;
+        return;
+      }
+
+      box.innerHTML = documents.map((item) => {
+        const status = getStatusInfo(item.date);
+        return `
+          <div class="list-item">
+            <div style="font-weight:bold; color:${status.color}">
+              ${item.driverName} - ${item.documentType} (${status.text})
+            </div>
+            <div class="small">
+              <span class="pill">Fleet: ${item.fleetNumber}</span>
+              <span class="pill">Expiry: ${item.date}</span>
+            </div>
+            <div class="small">Reminder Email: ${item.email || ""}</div>
+            ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function addIfNotExists(collectionName, fieldName, value) {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+
+      let existing = false;
+
+      if (collectionName === "drivers") {
+        existing = drivers.some(item => item.name.toLowerCase() === trimmed.toLowerCase());
+      } else if (collectionName === "fleets") {
+        existing = fleets.some(item => item.fleetNumber.toLowerCase() === trimmed.toLowerCase());
+      } else if (collectionName === "documentTypes") {
+        existing = documentTypes.some(item => item.name.toLowerCase() === trimmed.toLowerCase());
+      }
+
+      if (!existing) {
+        await addDoc(collection(db, collectionName), {
+          [fieldName]: trimmed,
+          created: new Date().toISOString()
+        });
+      }
+    }
+
+    window.addDriver = async function () {
+      const name = document.getElementById("newDriver").value.trim();
+      if (!name) {
+        alert("Please enter a driver name.");
+        return;
+      }
+
+      await addIfNotExists("drivers", "name", name);
+      document.getElementById("newDriver").value = "";
+      await loadDrivers();
+      alert("Driver saved.");
+    };
+
+    window.addFleet = async function () {
+      const fleetNumber = document.getElementById("newFleet").value.trim();
+      if (!fleetNumber) {
+        alert("Please enter a fleet number.");
+        return;
+      }
+
+      await addIfNotExists("fleets", "fleetNumber", fleetNumber);
+      document.getElementById("newFleet").value = "";
+      await loadFleets();
+      alert("Fleet number saved.");
+    };
+
+    window.addDocumentType = async function () {
+      const name = document.getElementById("newDocType").value.trim();
+      if (!name) {
+        alert("Please enter a document type.");
+        return;
+      }
+
+      await addIfNotExists("documentTypes", "name", name);
+      document.getElementById("newDocType").value = "";
+      await loadDocumentTypes();
+      alert("Document type saved.");
+    };
+
+    window.saveDocument = async function () {
+      try {
+        const driverName = document.getElementById("driverSelect").value;
+        const fleetNumber = document.getElementById("fleetSelect").value;
+        const selectedDocType = document.getElementById("docTypeSelect").value;
+        const customDocType = document.getElementById("customDocType").value.trim();
+        const date = document.getElementById("date").value;
+        const email = document.getElementById("email").value.trim();
+        const file = document.getElementById("file").files[0];
+
+        const documentType = customDocType || selectedDocType;
+
+        if (!driverName || !fleetNumber || !documentType || !date || !email) {
+          alert("Please select driver, fleet number, document type, expiry date, and reminder email.");
           return;
+        }
+
+        if (customDocType) {
+          await addIfNotExists("documentTypes", "name", customDocType);
+          await loadDocumentTypes();
         }
 
         let imageUrl = "";
@@ -68,32 +432,25 @@
           imageUrl = await getDownloadURL(storageRef);
         }
 
-        await addFirestoreDoc(collection(db, "documents"), {
-          category,
-          name,
-          docType,
+        await addDoc(collection(db, "documents"), {
+          driverName,
+          fleetNumber,
+          documentType,
           date,
           email,
           imageUrl,
           created: new Date().toISOString()
         });
 
-        await addFirestoreDoc(collection(db, "mail"), {
-          to: email,
-          message: {
-            subject: `Test Reminder: ${docType}`,
-            text: `${name}'s ${docType} expires on ${date}.`
-          }
-        });
-
-        document.getElementById("category").value = "Driver";
-        document.getElementById("name").value = "";
-        document.getElementById("doc").value = "";
+        document.getElementById("driverSelect").value = "";
+        document.getElementById("fleetSelect").value = "";
+        document.getElementById("docTypeSelect").value = "";
+        document.getElementById("customDocType").value = "";
         document.getElementById("date").value = "";
-        document.getElementById("file").value = "";
         document.getElementById("email").value = "";
+        document.getElementById("file").value = "";
 
-        await loadDocs();
+        await loadDocuments();
         alert("Document saved.");
       } catch (error) {
         console.error(error);
@@ -101,61 +458,14 @@
       }
     };
 
-    async function loadDocs() {
-      const querySnapshot = await getDocs(collection(db, "documents"));
-      const list = document.getElementById("list");
-      list.innerHTML = "";
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const li = document.createElement("li");
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const expiry = new Date(data.date);
-        expiry.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-
-        let status = "";
-        let color = "black";
-
-        if (diffDays < 0) {
-          status = "❌ EXPIRED";
-          color = "red";
-        } else if (diffDays === 0) {
-          status = "⚠️ EXPIRES TODAY";
-          color = "orange";
-        } else if (diffDays === 1) {
-          status = "⚠️ DUE TOMORROW";
-          color = "orange";
-        } else if (diffDays <= 7) {
-          status = "⚠️ DUE IN 7 DAYS";
-          color = "darkorange";
-        } else if (diffDays <= 30) {
-          status = "⚠️ DUE IN 30 DAYS";
-          color = "goldenrod";
-        } else {
-          status = "✅ VALID";
-          color = "green";
-        }
-
-        li.innerHTML = `
-          <span style="color:${color}; font-weight:bold;">
-            [${data.category || "Uncategorised"}] ${data.name} - ${data.docType} - Expiry: ${data.date} (${status})
-          </span>
-          <br>
-          Reminder: ${data.email || ""}
-          ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
-        `;
-
-        list.appendChild(li);
-      });
+    async function init() {
+      await loadDrivers();
+      await loadFleets();
+      await loadDocumentTypes();
+      await loadDocuments();
     }
 
-    loadDocs();
+    init();
   </script>
-
 </body>
 </html>
