@@ -61,6 +61,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 14px;
+      margin-bottom: 20px;
     }
 
     .stat-box {
@@ -135,10 +136,6 @@
 
     .tab-section {
       display: none;
-    }
-
-    .tab-section.active {
-      display: block;
     }
 
     .list-item {
@@ -306,19 +303,76 @@
         </div>
       </div>
 
-      <div style="height:20px"></div>
-
       <div class="tabs">
+        <button onclick="showTab('addDocTab')">Add / Edit Document</button>
         <button onclick="showTab('masterTab')">Master Lists</button>
         <button onclick="showTab('driversTab')">Drivers</button>
         <button onclick="showTab('trucksTab')">Trucks</button>
         <button onclick="showTab('trailersTab')">Trailers</button>
         <button onclick="showTab('companyTab')">Company Docs</button>
         <button onclick="showTab('allDocsTab')">All Docs</button>
-        <button onclick="showTab('addDocTab')">Add / Edit Document</button>
       </div>
 
-      <div id="masterTab" class="tab-section active">
+      <div id="addDocTab" class="tab-section">
+        <div class="card">
+          <h2 id="formTitle">Add / Edit Document</h2>
+
+          <div id="editBanner" class="edit-banner hidden">
+            You are editing an existing document.
+          </div>
+
+          <label>Document Owner Type</label>
+          <select id="ownerType" onchange="updateOwnerDropdown()">
+            <option value="">Select Owner Type</option>
+            <option value="Driver">Driver</option>
+            <option value="Truck">Truck</option>
+            <option value="Trailer">Trailer</option>
+            <option value="Company">Company</option>
+          </select>
+
+          <div id="driverBlock" class="hidden">
+            <label>Select Driver</label>
+            <select id="driverSelect"></select>
+          </div>
+
+          <div id="truckBlock" class="hidden">
+            <label>Select Truck</label>
+            <select id="truckSelect"></select>
+          </div>
+
+          <div id="trailerBlock" class="hidden">
+            <label>Select Trailer</label>
+            <select id="trailerSelect"></select>
+          </div>
+
+          <div id="companyBlock" class="hidden">
+            <label>Select Company</label>
+            <select id="companySelect"></select>
+          </div>
+
+          <label>Document Type</label>
+          <select id="docTypeSelect"></select>
+
+          <label>Or type a new document type</label>
+          <input id="customDocType" placeholder="Example: Fire Training Certificate">
+
+          <label>Expiry Date</label>
+          <input id="date" type="date">
+
+          <label>Reminder Email</label>
+          <input id="email" type="email" placeholder="Reminder Email">
+
+          <label>Upload Document</label>
+          <input id="file" type="file">
+
+          <div class="actions">
+            <button id="saveBtn" onclick="saveDocument()">Save Document</button>
+            <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="masterTab" class="tab-section">
         <div class="card">
           <h2>Master Lists</h2>
           <div class="grid">
@@ -449,65 +503,6 @@
           <div id="allDocumentsView"></div>
         </div>
       </div>
-
-      <div id="addDocTab" class="tab-section">
-        <div class="card">
-          <h2 id="formTitle">Add / Edit Document</h2>
-
-          <div id="editBanner" class="edit-banner hidden">
-            You are editing an existing document.
-          </div>
-
-          <label>Document Owner Type</label>
-          <select id="ownerType" onchange="updateOwnerDropdown()">
-            <option value="">Select Owner Type</option>
-            <option value="Driver">Driver</option>
-            <option value="Truck">Truck</option>
-            <option value="Trailer">Trailer</option>
-            <option value="Company">Company</option>
-          </select>
-
-          <div id="driverBlock" class="hidden">
-            <label>Select Driver</label>
-            <select id="driverSelect"></select>
-          </div>
-
-          <div id="truckBlock" class="hidden">
-            <label>Select Truck</label>
-            <select id="truckSelect"></select>
-          </div>
-
-          <div id="trailerBlock" class="hidden">
-            <label>Select Trailer</label>
-            <select id="trailerSelect"></select>
-          </div>
-
-          <div id="companyBlock" class="hidden">
-            <label>Select Company</label>
-            <select id="companySelect"></select>
-          </div>
-
-          <label>Document Type</label>
-          <select id="docTypeSelect"></select>
-
-          <label>Or type a new document type</label>
-          <input id="customDocType" placeholder="Example: Fire Training Certificate">
-
-          <label>Expiry Date</label>
-          <input id="date" type="date">
-
-          <label>Reminder Email</label>
-          <input id="email" type="email" placeholder="Reminder Email">
-
-          <label>Upload Document</label>
-          <input id="file" type="file">
-
-          <div class="actions">
-            <button id="saveBtn" onclick="saveDocument()">Save Document</button>
-            <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -614,9 +609,13 @@
     }
 
     function showTab(tabId) {
-      document.querySelectorAll(".tab-section").forEach(el => el.classList.remove("active"));
-      document.getElementById(tabId).classList.add("active");
+      document.querySelectorAll(".tab-section").forEach(el => {
+        el.style.display = "none";
+      });
+      const tab = document.getElementById(tabId);
+      if (tab) tab.style.display = "block";
     }
+    window.showTab = showTab;
 
     async function loadCollection(name) {
       const snap = await getDocs(collection(db, name));
@@ -881,10 +880,30 @@
           });
         }
 
-        alert("Registration successful.");
+        await addDoc(collection(db, "mail"), {
+          to: email,
+          message: {
+            subject: "Welcome to TUC DocuTrack",
+            text: `Hi ${name}, your account has been created as a ${role}.`
+          },
+          created: new Date().toISOString()
+        });
+
+        alert("Registration successful. You can now log in.");
       } catch (error) {
-        console.error(error);
-        alert("Registration failed. Check email, password, or duplicate driver name.");
+        console.error("Registration error:", error);
+
+        if (error.code === "auth/email-already-in-use") {
+          alert("That email address is already registered.");
+        } else if (error.code === "auth/invalid-email") {
+          alert("That email address is not valid.");
+        } else if (error.code === "auth/weak-password") {
+          alert("Password is too weak.");
+        } else if (error.code === "auth/operation-not-allowed") {
+          alert("Email/password sign-in is not enabled in Firebase Authentication.");
+        } else {
+          alert(`Registration failed: ${error.message}`);
+        }
       }
     };
 
@@ -892,10 +911,25 @@
       try {
         const email = document.getElementById("loginEmail").value.trim();
         const password = document.getElementById("loginPassword").value;
+
+        if (!email || !password) {
+          alert("Please enter email and password.");
+          return;
+        }
+
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-        console.error(error);
-        alert("Login failed.");
+        console.error("Login error:", error);
+
+        if (error.code === "auth/invalid-email") {
+          alert("That email address is not valid.");
+        } else if (error.code === "auth/user-not-found") {
+          alert("No user found with that email.");
+        } else if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+          alert("Wrong email or password.");
+        } else {
+          alert(`Login failed: ${error.message}`);
+        }
       }
     };
 
@@ -1107,7 +1141,7 @@
         resetForm();
       } catch (error) {
         console.error(error);
-        alert("Save failed.");
+        alert(`Save failed: ${error.message}`);
       }
     };
 
@@ -1147,7 +1181,7 @@
       await loadDocuments();
       updateRoleUI();
       resetForm();
-      showTab("masterTab");
+      showTab("addDocTab");
     }
 
     onAuthStateChanged(auth, async (user) => {
