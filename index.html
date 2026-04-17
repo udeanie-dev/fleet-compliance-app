@@ -57,6 +57,30 @@
       gap: 16px;
     }
 
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .stat-box {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .stat-box h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .stat-box .number {
+      font-size: 30px;
+      font-weight: bold;
+    }
+
     input, select, button, textarea {
       width: 100%;
       padding: 10px;
@@ -258,6 +282,31 @@
           <button class="secondary-btn" onclick="logoutUser()">Logout</button>
         </div>
       </div>
+
+      <div class="dashboard-grid">
+        <div class="stat-box">
+          <h3>Total Documents</h3>
+          <div class="number" id="statTotal">0</div>
+        </div>
+        <div class="stat-box">
+          <h3>Expired</h3>
+          <div class="number" id="statExpired" style="color:red;">0</div>
+        </div>
+        <div class="stat-box">
+          <h3>Due Today</h3>
+          <div class="number" id="statToday" style="color:orange;">0</div>
+        </div>
+        <div class="stat-box">
+          <h3>Due In 7 Days</h3>
+          <div class="number" id="stat7" style="color:darkorange;">0</div>
+        </div>
+        <div class="stat-box">
+          <h3>Due In 30 Days</h3>
+          <div class="number" id="stat30" style="color:goldenrod;">0</div>
+        </div>
+      </div>
+
+      <div style="height:20px"></div>
 
       <div class="tabs">
         <button onclick="showTab('masterTab')">Master Lists</button>
@@ -480,8 +529,7 @@
       getDoc,
       updateDoc,
       deleteDoc,
-      query,
-      where
+      setDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage,
@@ -545,6 +593,26 @@
       return { text: "✅ VALID", color: "green", diffDays };
     }
 
+    function renderDashboard() {
+      const total = documents.length;
+      const expired = documents.filter(d => getStatusInfo(d.date).diffDays < 0).length;
+      const dueToday = documents.filter(d => getStatusInfo(d.date).diffDays === 0).length;
+      const due7 = documents.filter(d => {
+        const n = getStatusInfo(d.date).diffDays;
+        return n > 0 && n <= 7;
+      }).length;
+      const due30 = documents.filter(d => {
+        const n = getStatusInfo(d.date).diffDays;
+        return n > 7 && n <= 30;
+      }).length;
+
+      document.getElementById("statTotal").innerText = total;
+      document.getElementById("statExpired").innerText = expired;
+      document.getElementById("statToday").innerText = dueToday;
+      document.getElementById("stat7").innerText = due7;
+      document.getElementById("stat30").innerText = due30;
+    }
+
     function showTab(tabId) {
       document.querySelectorAll(".tab-section").forEach(el => el.classList.remove("active"));
       document.getElementById(tabId).classList.add("active");
@@ -561,6 +629,22 @@
       const snap = await getDoc(doc(db, "users", uid));
       if (!snap.exists()) return null;
       return { id: snap.id, ...snap.data() };
+    }
+
+    async function seedDefaultTrucks() {
+      const existing = await loadCollection("trucks");
+      const existingSet = new Set(existing.map(x => (x.fleetNumber || "").toLowerCase()));
+
+      for (let i = 19; i <= 40; i++) {
+        const fleetNumber = `TMG ${i}`;
+        if (!existingSet.has(fleetNumber.toLowerCase())) {
+          await addDoc(collection(db, "trucks"), {
+            fleetNumber,
+            created: new Date().toISOString(),
+            seeded: true
+          });
+        }
+      }
     }
 
     async function loadDrivers() {
@@ -606,6 +690,7 @@
       documents = await loadCollection("documents");
       renderAllDocuments();
       renderOwnerDocs();
+      renderDashboard();
     }
 
     function renderSelect(id, values, placeholder) {
@@ -781,11 +866,7 @@
 
         const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-        await updateDoc(doc(db, "users", cred.user.uid), {}).catch(async () => {
-          await addDoc(collection(db, "temp"), { cleanup: true }).catch(() => {});
-        });
-
-        await setUserProfile(cred.user.uid, {
+        await setDoc(doc(db, "users", cred.user.uid), {
           name,
           email,
           role,
@@ -806,20 +887,6 @@
         alert("Registration failed. Check email, password, or duplicate driver name.");
       }
     };
-
-    async function setUserProfile(uid, data) {
-      await updateDoc(doc(db, "users", uid), data).catch(async () => {
-        const userRef = doc(db, "users", uid);
-        const snap = await getDoc(userRef);
-        if (!snap.exists()) {
-          await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js").then(async (m) => {
-            await m.setDoc(userRef, data);
-          });
-        } else {
-          await updateDoc(userRef, data);
-        }
-      });
-    }
 
     window.loginUser = async function () {
       try {
@@ -1065,15 +1132,13 @@
       ];
 
       managerOnlyIds.forEach(id => {
-        if (isManager()) {
-          document.getElementById(id).classList.remove("hidden");
-        } else {
-          document.getElementById(id).classList.add("hidden");
-        }
+        if (isManager()) document.getElementById(id).classList.remove("hidden");
+        else document.getElementById(id).classList.add("hidden");
       });
     }
 
     async function initAppData() {
+      await seedDefaultTrucks();
       await loadDrivers();
       await loadTrucks();
       await loadTrailers();
