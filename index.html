@@ -12,7 +12,7 @@
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -58,18 +58,6 @@
       background: #094db1;
     }
 
-    .secondary-btn {
-      background: #6c757d;
-    }
-
-    .secondary-btn:hover {
-      background: #5a6268;
-    }
-
-    .status {
-      font-weight: bold;
-    }
-
     .list-item {
       border-bottom: 1px solid #eee;
       padding: 12px 0;
@@ -80,12 +68,6 @@
       color: #666;
     }
 
-    .row-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-    }
-
     .pill {
       display: inline-block;
       padding: 4px 8px;
@@ -93,12 +75,11 @@
       background: #eef3ff;
       font-size: 12px;
       margin-right: 6px;
+      margin-top: 4px;
     }
 
-    @media (max-width: 700px) {
-      .row-actions {
-        grid-template-columns: 1fr;
-      }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
@@ -116,9 +97,21 @@
         </div>
 
         <div>
-          <h3>Add Fleet Number</h3>
-          <input id="newFleet" placeholder="Enter fleet number" />
-          <button onclick="addFleet()">Save Fleet Number</button>
+          <h3>Add Truck</h3>
+          <input id="newTruck" placeholder="Enter truck / fleet number" />
+          <button onclick="addTruck()">Save Truck</button>
+        </div>
+
+        <div>
+          <h3>Add Trailer</h3>
+          <input id="newTrailer" placeholder="Enter trailer number" />
+          <button onclick="addTrailer()">Save Trailer</button>
+        </div>
+
+        <div>
+          <h3>Add Company Name</h3>
+          <input id="newCompany" placeholder="Enter company name" />
+          <button onclick="addCompany()">Save Company</button>
         </div>
 
         <div>
@@ -132,11 +125,34 @@
     <div class="card">
       <h2>Add Compliance Document</h2>
 
-      <label>Driver</label>
-      <select id="driverSelect"></select>
+      <label>Document Owner Type</label>
+      <select id="ownerType" onchange="updateOwnerDropdown()">
+        <option value="">Select Owner Type</option>
+        <option value="Driver">Driver</option>
+        <option value="Truck">Truck</option>
+        <option value="Trailer">Trailer</option>
+        <option value="Company">Company</option>
+      </select>
 
-      <label>Fleet Number</label>
-      <select id="fleetSelect"></select>
+      <div id="driverBlock" class="hidden">
+        <label>Select Driver</label>
+        <select id="driverSelect"></select>
+      </div>
+
+      <div id="truckBlock" class="hidden">
+        <label>Select Truck</label>
+        <select id="truckSelect"></select>
+      </div>
+
+      <div id="trailerBlock" class="hidden">
+        <label>Select Trailer</label>
+        <select id="trailerSelect"></select>
+      </div>
+
+      <div id="companyBlock" class="hidden">
+        <label>Select Company</label>
+        <select id="companySelect"></select>
+      </div>
 
       <label>Document Type</label>
       <select id="docTypeSelect"></select>
@@ -157,15 +173,23 @@
     </div>
 
     <div class="card">
-      <h2>Saved Drivers / Fleets / Document Types</h2>
+      <h2>Master Lists</h2>
       <div class="grid">
         <div>
           <h3>Drivers</h3>
           <div id="driversList"></div>
         </div>
         <div>
-          <h3>Fleet Numbers</h3>
-          <div id="fleetsList"></div>
+          <h3>Trucks</h3>
+          <div id="trucksList"></div>
+        </div>
+        <div>
+          <h3>Trailers</h3>
+          <div id="trailersList"></div>
+        </div>
+        <div>
+          <h3>Companies</h3>
+          <div id="companiesList"></div>
         </div>
         <div>
           <h3>Document Types</h3>
@@ -186,9 +210,7 @@
       getFirestore,
       collection,
       addDoc,
-      getDocs,
-      doc,
-      updateDoc
+      getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage,
@@ -211,11 +233,13 @@
     const storage = getStorage(app);
 
     let drivers = [];
-    let fleets = [];
+    let trucks = [];
+    let trailers = [];
+    let companies = [];
     let documentTypes = [];
     let documents = [];
 
-    function sortByName(arr, field) {
+    function sortByField(arr, field) {
       return arr.sort((a, b) => (a[field] || "").localeCompare(b[field] || ""));
     }
 
@@ -240,25 +264,43 @@
       const snap = await getDocs(collection(db, "drivers"));
       drivers = [];
       snap.forEach((d) => drivers.push({ id: d.id, ...d.data() }));
-      sortByName(drivers, "name");
+      sortByField(drivers, "name");
       renderDrivers();
       renderDriverDropdown();
     }
 
-    async function loadFleets() {
-      const snap = await getDocs(collection(db, "fleets"));
-      fleets = [];
-      snap.forEach((d) => fleets.push({ id: d.id, ...d.data() }));
-      sortByName(fleets, "fleetNumber");
-      renderFleets();
-      renderFleetDropdown();
+    async function loadTrucks() {
+      const snap = await getDocs(collection(db, "trucks"));
+      trucks = [];
+      snap.forEach((d) => trucks.push({ id: d.id, ...d.data() }));
+      sortByField(trucks, "fleetNumber");
+      renderTrucks();
+      renderTruckDropdown();
+    }
+
+    async function loadTrailers() {
+      const snap = await getDocs(collection(db, "trailers"));
+      trailers = [];
+      snap.forEach((d) => trailers.push({ id: d.id, ...d.data() }));
+      sortByField(trailers, "trailerNumber");
+      renderTrailers();
+      renderTrailerDropdown();
+    }
+
+    async function loadCompanies() {
+      const snap = await getDocs(collection(db, "companies"));
+      companies = [];
+      snap.forEach((d) => companies.push({ id: d.id, ...d.data() }));
+      sortByField(companies, "name");
+      renderCompanies();
+      renderCompanyDropdown();
     }
 
     async function loadDocumentTypes() {
       const snap = await getDocs(collection(db, "documentTypes"));
       documentTypes = [];
       snap.forEach((d) => documentTypes.push({ id: d.id, ...d.data() }));
-      sortByName(documentTypes, "name");
+      sortByField(documentTypes, "name");
       renderDocumentTypes();
       renderDocumentTypeDropdown();
     }
@@ -267,52 +309,82 @@
       const snap = await getDocs(collection(db, "documents"));
       documents = [];
       snap.forEach((d) => documents.push({ id: d.id, ...d.data() }));
-      documents.sort((a, b) => (a.driverName || "").localeCompare(b.driverName || ""));
+      documents.sort((a, b) => (a.ownerName || "").localeCompare(b.ownerName || ""));
       renderDocuments();
     }
 
     function renderDriverDropdown() {
       const select = document.getElementById("driverSelect");
       select.innerHTML = `<option value="">Select Driver</option>`;
-      drivers.forEach((driver) => {
-        select.innerHTML += `<option value="${driver.name}">${driver.name}</option>`;
+      drivers.forEach((item) => {
+        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
       });
     }
 
-    function renderFleetDropdown() {
-      const select = document.getElementById("fleetSelect");
-      select.innerHTML = `<option value="">Select Fleet Number</option>`;
-      fleets.forEach((fleet) => {
-        select.innerHTML += `<option value="${fleet.fleetNumber}">${fleet.fleetNumber}</option>`;
+    function renderTruckDropdown() {
+      const select = document.getElementById("truckSelect");
+      select.innerHTML = `<option value="">Select Truck</option>`;
+      trucks.forEach((item) => {
+        select.innerHTML += `<option value="${item.fleetNumber}">${item.fleetNumber}</option>`;
+      });
+    }
+
+    function renderTrailerDropdown() {
+      const select = document.getElementById("trailerSelect");
+      select.innerHTML = `<option value="">Select Trailer</option>`;
+      trailers.forEach((item) => {
+        select.innerHTML += `<option value="${item.trailerNumber}">${item.trailerNumber}</option>`;
+      });
+    }
+
+    function renderCompanyDropdown() {
+      const select = document.getElementById("companySelect");
+      select.innerHTML = `<option value="">Select Company</option>`;
+      companies.forEach((item) => {
+        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
       });
     }
 
     function renderDocumentTypeDropdown() {
       const select = document.getElementById("docTypeSelect");
       select.innerHTML = `<option value="">Select Document Type</option>`;
-      documentTypes.forEach((type) => {
-        select.innerHTML += `<option value="${type.name}">${type.name}</option>`;
+      documentTypes.forEach((item) => {
+        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
       });
     }
 
     function renderDrivers() {
       const box = document.getElementById("driversList");
       box.innerHTML = drivers.length
-        ? drivers.map(d => `<div class="list-item">${d.name}</div>`).join("")
+        ? drivers.map(item => `<div class="list-item">${item.name}</div>`).join("")
         : `<div class="small">No drivers saved yet.</div>`;
     }
 
-    function renderFleets() {
-      const box = document.getElementById("fleetsList");
-      box.innerHTML = fleets.length
-        ? fleets.map(f => `<div class="list-item">${f.fleetNumber}</div>`).join("")
-        : `<div class="small">No fleet numbers saved yet.</div>`;
+    function renderTrucks() {
+      const box = document.getElementById("trucksList");
+      box.innerHTML = trucks.length
+        ? trucks.map(item => `<div class="list-item">${item.fleetNumber}</div>`).join("")
+        : `<div class="small">No trucks saved yet.</div>`;
+    }
+
+    function renderTrailers() {
+      const box = document.getElementById("trailersList");
+      box.innerHTML = trailers.length
+        ? trailers.map(item => `<div class="list-item">${item.trailerNumber}</div>`).join("")
+        : `<div class="small">No trailers saved yet.</div>`;
+    }
+
+    function renderCompanies() {
+      const box = document.getElementById("companiesList");
+      box.innerHTML = companies.length
+        ? companies.map(item => `<div class="list-item">${item.name}</div>`).join("")
+        : `<div class="small">No companies saved yet.</div>`;
     }
 
     function renderDocumentTypes() {
       const box = document.getElementById("docTypesList");
       box.innerHTML = documentTypes.length
-        ? documentTypes.map(t => `<div class="list-item">${t.name}</div>`).join("")
+        ? documentTypes.map(item => `<div class="list-item">${item.name}</div>`).join("")
         : `<div class="small">No document types saved yet.</div>`;
     }
 
@@ -328,11 +400,11 @@
         return `
           <div class="list-item">
             <div style="font-weight:bold; color:${status.color}">
-              ${item.driverName} - ${item.documentType} (${status.text})
+              [${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})
             </div>
             <div class="small">
-              <span class="pill">Fleet: ${item.fleetNumber}</span>
               <span class="pill">Expiry: ${item.date}</span>
+              <span class="pill">Owner Type: ${item.ownerType}</span>
             </div>
             <div class="small">Reminder Email: ${item.email || ""}</div>
             ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
@@ -341,21 +413,37 @@
       }).join("");
     }
 
-    async function addIfNotExists(collectionName, fieldName, value) {
+    function hideAllOwnerBlocks() {
+      document.getElementById("driverBlock").classList.add("hidden");
+      document.getElementById("truckBlock").classList.add("hidden");
+      document.getElementById("trailerBlock").classList.add("hidden");
+      document.getElementById("companyBlock").classList.add("hidden");
+    }
+
+    window.updateOwnerDropdown = function () {
+      const ownerType = document.getElementById("ownerType").value;
+      hideAllOwnerBlocks();
+
+      if (ownerType === "Driver") {
+        document.getElementById("driverBlock").classList.remove("hidden");
+      } else if (ownerType === "Truck") {
+        document.getElementById("truckBlock").classList.remove("hidden");
+      } else if (ownerType === "Trailer") {
+        document.getElementById("trailerBlock").classList.remove("hidden");
+      } else if (ownerType === "Company") {
+        document.getElementById("companyBlock").classList.remove("hidden");
+      }
+    };
+
+    async function addIfNotExists(collectionName, fieldName, value, cacheArray, cacheField) {
       const trimmed = value.trim();
       if (!trimmed) return;
 
-      let existing = false;
+      const exists = cacheArray.some(item =>
+        (item[cacheField] || "").toLowerCase() === trimmed.toLowerCase()
+      );
 
-      if (collectionName === "drivers") {
-        existing = drivers.some(item => item.name.toLowerCase() === trimmed.toLowerCase());
-      } else if (collectionName === "fleets") {
-        existing = fleets.some(item => item.fleetNumber.toLowerCase() === trimmed.toLowerCase());
-      } else if (collectionName === "documentTypes") {
-        existing = documentTypes.some(item => item.name.toLowerCase() === trimmed.toLowerCase());
-      }
-
-      if (!existing) {
+      if (!exists) {
         await addDoc(collection(db, collectionName), {
           [fieldName]: trimmed,
           created: new Date().toISOString()
@@ -364,63 +452,96 @@
     }
 
     window.addDriver = async function () {
-      const name = document.getElementById("newDriver").value.trim();
-      if (!name) {
+      const value = document.getElementById("newDriver").value.trim();
+      if (!value) {
         alert("Please enter a driver name.");
         return;
       }
 
-      await addIfNotExists("drivers", "name", name);
+      await addIfNotExists("drivers", "name", value, drivers, "name");
       document.getElementById("newDriver").value = "";
       await loadDrivers();
       alert("Driver saved.");
     };
 
-    window.addFleet = async function () {
-      const fleetNumber = document.getElementById("newFleet").value.trim();
-      if (!fleetNumber) {
-        alert("Please enter a fleet number.");
+    window.addTruck = async function () {
+      const value = document.getElementById("newTruck").value.trim();
+      if (!value) {
+        alert("Please enter a truck number.");
         return;
       }
 
-      await addIfNotExists("fleets", "fleetNumber", fleetNumber);
-      document.getElementById("newFleet").value = "";
-      await loadFleets();
-      alert("Fleet number saved.");
+      await addIfNotExists("trucks", "fleetNumber", value, trucks, "fleetNumber");
+      document.getElementById("newTruck").value = "";
+      await loadTrucks();
+      alert("Truck saved.");
+    };
+
+    window.addTrailer = async function () {
+      const value = document.getElementById("newTrailer").value.trim();
+      if (!value) {
+        alert("Please enter a trailer number.");
+        return;
+      }
+
+      await addIfNotExists("trailers", "trailerNumber", value, trailers, "trailerNumber");
+      document.getElementById("newTrailer").value = "";
+      await loadTrailers();
+      alert("Trailer saved.");
+    };
+
+    window.addCompany = async function () {
+      const value = document.getElementById("newCompany").value.trim();
+      if (!value) {
+        alert("Please enter a company name.");
+        return;
+      }
+
+      await addIfNotExists("companies", "name", value, companies, "name");
+      document.getElementById("newCompany").value = "";
+      await loadCompanies();
+      alert("Company saved.");
     };
 
     window.addDocumentType = async function () {
-      const name = document.getElementById("newDocType").value.trim();
-      if (!name) {
+      const value = document.getElementById("newDocType").value.trim();
+      if (!value) {
         alert("Please enter a document type.");
         return;
       }
 
-      await addIfNotExists("documentTypes", "name", name);
+      await addIfNotExists("documentTypes", "name", value, documentTypes, "name");
       document.getElementById("newDocType").value = "";
       await loadDocumentTypes();
       alert("Document type saved.");
     };
 
+    function getOwnerNameByType(ownerType) {
+      if (ownerType === "Driver") return document.getElementById("driverSelect").value;
+      if (ownerType === "Truck") return document.getElementById("truckSelect").value;
+      if (ownerType === "Trailer") return document.getElementById("trailerSelect").value;
+      if (ownerType === "Company") return document.getElementById("companySelect").value;
+      return "";
+    }
+
     window.saveDocument = async function () {
       try {
-        const driverName = document.getElementById("driverSelect").value;
-        const fleetNumber = document.getElementById("fleetSelect").value;
+        const ownerType = document.getElementById("ownerType").value;
+        const ownerName = getOwnerNameByType(ownerType);
         const selectedDocType = document.getElementById("docTypeSelect").value;
         const customDocType = document.getElementById("customDocType").value.trim();
+        const documentType = customDocType || selectedDocType;
         const date = document.getElementById("date").value;
         const email = document.getElementById("email").value.trim();
         const file = document.getElementById("file").files[0];
 
-        const documentType = customDocType || selectedDocType;
-
-        if (!driverName || !fleetNumber || !documentType || !date || !email) {
-          alert("Please select driver, fleet number, document type, expiry date, and reminder email.");
+        if (!ownerType || !ownerName || !documentType || !date || !email) {
+          alert("Please select owner type, owner, document type, expiry date, and reminder email.");
           return;
         }
 
         if (customDocType) {
-          await addIfNotExists("documentTypes", "name", customDocType);
+          await addIfNotExists("documentTypes", "name", customDocType, documentTypes, "name");
           await loadDocumentTypes();
         }
 
@@ -433,8 +554,8 @@
         }
 
         await addDoc(collection(db, "documents"), {
-          driverName,
-          fleetNumber,
+          ownerType,
+          ownerName,
           documentType,
           date,
           email,
@@ -442,13 +563,17 @@
           created: new Date().toISOString()
         });
 
+        document.getElementById("ownerType").value = "";
         document.getElementById("driverSelect").value = "";
-        document.getElementById("fleetSelect").value = "";
+        document.getElementById("truckSelect").value = "";
+        document.getElementById("trailerSelect").value = "";
+        document.getElementById("companySelect").value = "";
         document.getElementById("docTypeSelect").value = "";
         document.getElementById("customDocType").value = "";
         document.getElementById("date").value = "";
         document.getElementById("email").value = "";
         document.getElementById("file").value = "";
+        hideAllOwnerBlocks();
 
         await loadDocuments();
         alert("Document saved.");
@@ -460,9 +585,12 @@
 
     async function init() {
       await loadDrivers();
-      await loadFleets();
+      await loadTrucks();
+      await loadTrailers();
+      await loadCompanies();
       await loadDocumentTypes();
       await loadDocuments();
+      hideAllOwnerBlocks();
     }
 
     init();
