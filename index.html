@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Fleet Compliance App</title>
+  <title>TUC DocuTrack</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -11,14 +11,36 @@
       color: #222;
     }
 
+    .header {
+      background: white;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .header img {
+      max-width: 260px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto 12px;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #5a2a82;
+      font-size: 32px;
+    }
+
+    .header p {
+      margin: 6px 0 0;
+      color: #666;
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
-    }
-
-    h1, h2, h3 {
-      margin-top: 0;
     }
 
     .card {
@@ -47,7 +69,7 @@
     }
 
     button {
-      background: #0b5ed7;
+      background: #5a2a82;
       color: white;
       border: none;
       cursor: pointer;
@@ -55,12 +77,28 @@
     }
 
     button:hover {
-      background: #094db1;
+      background: #472066;
+    }
+
+    .secondary-btn {
+      background: #6c757d;
+    }
+
+    .secondary-btn:hover {
+      background: #545b62;
+    }
+
+    .danger-btn {
+      background: #b02a37;
+    }
+
+    .danger-btn:hover {
+      background: #8b1f2a;
     }
 
     .list-item {
       border-bottom: 1px solid #eee;
-      padding: 12px 0;
+      padding: 14px 0;
     }
 
     .small {
@@ -81,49 +119,99 @@
     .hidden {
       display: none;
     }
+
+    .doc-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .status {
+      font-weight: bold;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      width: auto;
+      min-width: 120px;
+      margin-bottom: 0;
+    }
+
+    .edit-banner {
+      background: #fff3cd;
+      border: 1px solid #ffe69c;
+      color: #664d03;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 700px) {
+      .actions {
+        flex-direction: column;
+      }
+
+      .actions button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Fleet Compliance Reminder</h1>
+  <div class="header">
+    <img src="logo.png" alt="TUC DocuTrack Logo">
+    <h1>TUC DocuTrack</h1>
+    <p>Compliance document tracking for drivers, trucks, trailers and company records</p>
+  </div>
 
+  <div class="container">
     <div class="card">
       <h2>Register Master Data</h2>
       <div class="grid">
         <div>
           <h3>Add Driver</h3>
-          <input id="newDriver" placeholder="Enter driver name" />
+          <input id="newDriver" placeholder="Enter driver name">
           <button onclick="addDriver()">Save Driver</button>
         </div>
 
         <div>
           <h3>Add Truck</h3>
-          <input id="newTruck" placeholder="Enter truck / fleet number" />
+          <input id="newTruck" placeholder="Enter truck / fleet number">
           <button onclick="addTruck()">Save Truck</button>
         </div>
 
         <div>
           <h3>Add Trailer</h3>
-          <input id="newTrailer" placeholder="Enter trailer number" />
+          <input id="newTrailer" placeholder="Enter trailer number">
           <button onclick="addTrailer()">Save Trailer</button>
         </div>
 
         <div>
-          <h3>Add Company Name</h3>
-          <input id="newCompany" placeholder="Enter company name" />
+          <h3>Add Company</h3>
+          <input id="newCompany" placeholder="Enter company name">
           <button onclick="addCompany()">Save Company</button>
         </div>
 
         <div>
           <h3>Add Document Type</h3>
-          <input id="newDocType" placeholder="Enter document type" />
+          <input id="newDocType" placeholder="Enter document type">
           <button onclick="addDocumentType()">Save Document Type</button>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Add Compliance Document</h2>
+      <h2 id="formTitle">Add Compliance Document</h2>
+
+      <div id="editBanner" class="edit-banner hidden">
+        You are editing an existing document. Update the expiry date and upload a new file if needed.
+      </div>
 
       <label>Document Owner Type</label>
       <select id="ownerType" onchange="updateOwnerDropdown()">
@@ -158,18 +246,21 @@
       <select id="docTypeSelect"></select>
 
       <label>Or type a new document type</label>
-      <input id="customDocType" placeholder="Example: Fire Training Certificate" />
+      <input id="customDocType" placeholder="Example: Cross-border permit or Fire Training Certificate">
 
       <label>Expiry Date</label>
-      <input id="date" type="date" />
+      <input id="date" type="date">
 
       <label>Reminder Email</label>
-      <input id="email" type="email" placeholder="Reminder Email" />
+      <input id="email" type="email" placeholder="Reminder Email">
 
       <label>Upload Document</label>
-      <input id="file" type="file" />
+      <input id="file" type="file">
 
-      <button onclick="saveDocument()">Save Document</button>
+      <div class="actions">
+        <button id="saveBtn" onclick="saveDocument()">Save Document</button>
+        <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
+      </div>
     </div>
 
     <div class="card">
@@ -210,7 +301,9 @@
       getFirestore,
       collection,
       addDoc,
-      getDocs
+      getDocs,
+      doc,
+      updateDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage,
@@ -238,6 +331,8 @@
     let companies = [];
     let documentTypes = [];
     let documents = [];
+    let editingDocumentId = null;
+    let existingImageUrl = "";
 
     function sortByField(arr, field) {
       return arr.sort((a, b) => (a[field] || "").localeCompare(b[field] || ""));
@@ -260,55 +355,50 @@
       return { text: "✅ VALID", color: "green" };
     }
 
+    async function loadCollection(collectionName) {
+      const snap = await getDocs(collection(db, collectionName));
+      const items = [];
+      snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
+      return items;
+    }
+
     async function loadDrivers() {
-      const snap = await getDocs(collection(db, "drivers"));
-      drivers = [];
-      snap.forEach((d) => drivers.push({ id: d.id, ...d.data() }));
+      drivers = await loadCollection("drivers");
       sortByField(drivers, "name");
       renderDrivers();
       renderDriverDropdown();
     }
 
     async function loadTrucks() {
-      const snap = await getDocs(collection(db, "trucks"));
-      trucks = [];
-      snap.forEach((d) => trucks.push({ id: d.id, ...d.data() }));
+      trucks = await loadCollection("trucks");
       sortByField(trucks, "fleetNumber");
       renderTrucks();
       renderTruckDropdown();
     }
 
     async function loadTrailers() {
-      const snap = await getDocs(collection(db, "trailers"));
-      trailers = [];
-      snap.forEach((d) => trailers.push({ id: d.id, ...d.data() }));
+      trailers = await loadCollection("trailers");
       sortByField(trailers, "trailerNumber");
       renderTrailers();
       renderTrailerDropdown();
     }
 
     async function loadCompanies() {
-      const snap = await getDocs(collection(db, "companies"));
-      companies = [];
-      snap.forEach((d) => companies.push({ id: d.id, ...d.data() }));
+      companies = await loadCollection("companies");
       sortByField(companies, "name");
       renderCompanies();
       renderCompanyDropdown();
     }
 
     async function loadDocumentTypes() {
-      const snap = await getDocs(collection(db, "documentTypes"));
-      documentTypes = [];
-      snap.forEach((d) => documentTypes.push({ id: d.id, ...d.data() }));
+      documentTypes = await loadCollection("documentTypes");
       sortByField(documentTypes, "name");
       renderDocumentTypes();
       renderDocumentTypeDropdown();
     }
 
     async function loadDocuments() {
-      const snap = await getDocs(collection(db, "documents"));
-      documents = [];
-      snap.forEach((d) => documents.push({ id: d.id, ...d.data() }));
+      documents = await loadCollection("documents");
       documents.sort((a, b) => (a.ownerName || "").localeCompare(b.ownerName || ""));
       renderDocuments();
     }
@@ -353,43 +443,36 @@
       });
     }
 
+    function renderSimpleList(elementId, items, field, emptyText) {
+      const box = document.getElementById(elementId);
+      box.innerHTML = items.length
+        ? items.map(item => `<div class="list-item">${item[field]}</div>`).join("")
+        : `<div class="small">${emptyText}</div>`;
+    }
+
     function renderDrivers() {
-      const box = document.getElementById("driversList");
-      box.innerHTML = drivers.length
-        ? drivers.map(item => `<div class="list-item">${item.name}</div>`).join("")
-        : `<div class="small">No drivers saved yet.</div>`;
+      renderSimpleList("driversList", drivers, "name", "No drivers saved yet.");
     }
 
     function renderTrucks() {
-      const box = document.getElementById("trucksList");
-      box.innerHTML = trucks.length
-        ? trucks.map(item => `<div class="list-item">${item.fleetNumber}</div>`).join("")
-        : `<div class="small">No trucks saved yet.</div>`;
+      renderSimpleList("trucksList", trucks, "fleetNumber", "No trucks saved yet.");
     }
 
     function renderTrailers() {
-      const box = document.getElementById("trailersList");
-      box.innerHTML = trailers.length
-        ? trailers.map(item => `<div class="list-item">${item.trailerNumber}</div>`).join("")
-        : `<div class="small">No trailers saved yet.</div>`;
+      renderSimpleList("trailersList", trailers, "trailerNumber", "No trailers saved yet.");
     }
 
     function renderCompanies() {
-      const box = document.getElementById("companiesList");
-      box.innerHTML = companies.length
-        ? companies.map(item => `<div class="list-item">${item.name}</div>`).join("")
-        : `<div class="small">No companies saved yet.</div>`;
+      renderSimpleList("companiesList", companies, "name", "No companies saved yet.");
     }
 
     function renderDocumentTypes() {
-      const box = document.getElementById("docTypesList");
-      box.innerHTML = documentTypes.length
-        ? documentTypes.map(item => `<div class="list-item">${item.name}</div>`).join("")
-        : `<div class="small">No document types saved yet.</div>`;
+      renderSimpleList("docTypesList", documentTypes, "name", "No document types saved yet.");
     }
 
     function renderDocuments() {
       const box = document.getElementById("documentsList");
+
       if (!documents.length) {
         box.innerHTML = `<div class="small">No documents saved yet.</div>`;
         return;
@@ -397,17 +480,25 @@
 
       box.innerHTML = documents.map((item) => {
         const status = getStatusInfo(item.date);
+
         return `
           <div class="list-item">
-            <div style="font-weight:bold; color:${status.color}">
+            <div class="doc-title" style="color:${status.color}">
               [${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})
             </div>
+
             <div class="small">
               <span class="pill">Expiry: ${item.date}</span>
               <span class="pill">Owner Type: ${item.ownerType}</span>
             </div>
+
             <div class="small">Reminder Email: ${item.email || ""}</div>
+
             ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
+
+            <div class="actions">
+              <button onclick="editDocument('${item.id}')">Edit</button>
+            </div>
           </div>
         `;
       }).join("");
@@ -524,6 +615,73 @@
       return "";
     }
 
+    function resetForm() {
+      editingDocumentId = null;
+      existingImageUrl = "";
+
+      document.getElementById("formTitle").innerText = "Add Compliance Document";
+      document.getElementById("editBanner").classList.add("hidden");
+      document.getElementById("saveBtn").innerText = "Save Document";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+
+      document.getElementById("ownerType").value = "";
+      document.getElementById("driverSelect").value = "";
+      document.getElementById("truckSelect").value = "";
+      document.getElementById("trailerSelect").value = "";
+      document.getElementById("companySelect").value = "";
+      document.getElementById("docTypeSelect").value = "";
+      document.getElementById("customDocType").value = "";
+      document.getElementById("date").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("file").value = "";
+
+      hideAllOwnerBlocks();
+    }
+
+    window.cancelEdit = function () {
+      resetForm();
+    };
+
+    window.editDocument = function (id) {
+      const item = documents.find(doc => doc.id === id);
+      if (!item) return;
+
+      editingDocumentId = id;
+      existingImageUrl = item.imageUrl || "";
+
+      document.getElementById("formTitle").innerText = "Edit Compliance Document";
+      document.getElementById("editBanner").classList.remove("hidden");
+      document.getElementById("saveBtn").innerText = "Update Document";
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+
+      document.getElementById("ownerType").value = item.ownerType || "";
+      updateOwnerDropdown();
+
+      if (item.ownerType === "Driver") {
+        document.getElementById("driverSelect").value = item.ownerName || "";
+      } else if (item.ownerType === "Truck") {
+        document.getElementById("truckSelect").value = item.ownerName || "";
+      } else if (item.ownerType === "Trailer") {
+        document.getElementById("trailerSelect").value = item.ownerName || "";
+      } else if (item.ownerType === "Company") {
+        document.getElementById("companySelect").value = item.ownerName || "";
+      }
+
+      const matchingType = documentTypes.find(t => t.name === item.documentType);
+      if (matchingType) {
+        document.getElementById("docTypeSelect").value = item.documentType;
+        document.getElementById("customDocType").value = "";
+      } else {
+        document.getElementById("docTypeSelect").value = "";
+        document.getElementById("customDocType").value = item.documentType || "";
+      }
+
+      document.getElementById("date").value = item.date || "";
+      document.getElementById("email").value = item.email || "";
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     window.saveDocument = async function () {
       try {
         const ownerType = document.getElementById("ownerType").value;
@@ -545,7 +703,7 @@
           await loadDocumentTypes();
         }
 
-        let imageUrl = "";
+        let imageUrl = existingImageUrl;
 
         if (file) {
           const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
@@ -553,30 +711,29 @@
           imageUrl = await getDownloadURL(storageRef);
         }
 
-        await addDoc(collection(db, "documents"), {
+        const payload = {
           ownerType,
           ownerName,
           documentType,
           date,
           email,
           imageUrl,
-          created: new Date().toISOString()
-        });
+          updated: new Date().toISOString()
+        };
 
-        document.getElementById("ownerType").value = "";
-        document.getElementById("driverSelect").value = "";
-        document.getElementById("truckSelect").value = "";
-        document.getElementById("trailerSelect").value = "";
-        document.getElementById("companySelect").value = "";
-        document.getElementById("docTypeSelect").value = "";
-        document.getElementById("customDocType").value = "";
-        document.getElementById("date").value = "";
-        document.getElementById("email").value = "";
-        document.getElementById("file").value = "";
-        hideAllOwnerBlocks();
+        if (editingDocumentId) {
+          await updateDoc(doc(db, "documents", editingDocumentId), payload);
+          alert("Document updated.");
+        } else {
+          await addDoc(collection(db, "documents"), {
+            ...payload,
+            created: new Date().toISOString()
+          });
+          alert("Document saved.");
+        }
 
         await loadDocuments();
-        alert("Document saved.");
+        resetForm();
       } catch (error) {
         console.error(error);
         alert("Save failed. Please try again.");
@@ -590,7 +747,7 @@
       await loadCompanies();
       await loadDocumentTypes();
       await loadDocuments();
-      hideAllOwnerBlocks();
+      resetForm();
     }
 
     init();
