@@ -6,143 +6,156 @@
 </head>
 <body style="font-family: Arial; padding: 20px;">
 
-<h1>Fleet Compliance Reminder</h1>
+  <h1>Fleet Compliance Reminder</h1>
 
-<h3>Add Document</h3>
-<input id="name" placeholder="Driver / Vehicle" /><br><br>
-<input id="doc" placeholder="Document Type" /><br><br>
-<input id="date" type="date" /><br><br>
-<input id="file" type="file" /><br><br>
-<input id="email" type="email" placeholder="Reminder Email" /><br><br>
+  <h3>Add Document</h3>
 
-<button onclick="addDoc()">Save</button>
+  <select id="category"><br><br>
+    <option value="Driver">Driver</option>
+    <option value="Vehicle">Vehicle</option>
+    <option value="Trailer">Trailer</option>
+    <option value="Company">Company</option>
+  </select><br><br>
 
-<h3>Documents</h3>
-<ul id="list"></ul>
+  <input id="name" placeholder="Driver / Vehicle / Trailer / Company Name" /><br><br>
+  <input id="doc" placeholder="Document Type" /><br><br>
+  <input id="date" type="date" /><br><br>
+  <input id="file" type="file" /><br><br>
+  <input id="email" type="email" placeholder="Reminder Email" /><br><br>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc as addFirestoreDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  <button onclick="addDoc()">Save</button>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8",
-  authDomain: "fleet-compliance-app.firebaseapp.com",
-  projectId: "fleet-compliance-app",
-  storageBucket: "fleet-compliance-app.firebasestorage.app",
-  messagingSenderId: "839373661347",
-  appId: "1:839373661347:web:c6704a138194e2b17a0b16"
-};
+  <h3>Documents</h3>
+  <ul id="list"></ul>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app);
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc as addFirestoreDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-window.addDoc = async function () {
-  try {
-    const name = document.getElementById("name").value.trim();
-    const docType = document.getElementById("doc").value.trim();
-    const date = document.getElementById("date").value;
-    const file = document.getElementById("file").files[0];
-    const email = document.getElementById("email").value.trim();
+    const firebaseConfig = {
+      apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8",
+      authDomain: "fleet-compliance-app.firebaseapp.com",
+      projectId: "fleet-compliance-app",
+      storageBucket: "fleet-compliance-app.firebasestorage.app",
+      messagingSenderId: "839373661347",
+      appId: "1:839373661347:web:c6704a138194e2b17a0b16"
+    };
 
-    if (!name || !docType || !date || !email) {
-      alert("Please fill in name, document type, expiry date, and reminder email.");
-      return;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    window.addDoc = async function () {
+      try {
+        const category = document.getElementById("category").value;
+        const name = document.getElementById("name").value.trim();
+        const docType = document.getElementById("doc").value.trim();
+        const date = document.getElementById("date").value;
+        const file = document.getElementById("file").files[0];
+        const email = document.getElementById("email").value.trim();
+
+        if (!category || !name || !docType || !date || !email) {
+          alert("Please fill in category, name, document type, expiry date, and reminder email.");
+          return;
+        }
+
+        let imageUrl = "";
+
+        if (file) {
+          const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
+          await uploadBytes(storageRef, file);
+          imageUrl = await getDownloadURL(storageRef);
+        }
+
+        await addFirestoreDoc(collection(db, "documents"), {
+          category,
+          name,
+          docType,
+          date,
+          email,
+          imageUrl,
+          created: new Date().toISOString()
+        });
+
+        await addFirestoreDoc(collection(db, "mail"), {
+          to: email,
+          message: {
+            subject: `Test Reminder: ${docType}`,
+            text: `${name}'s ${docType} expires on ${date}.`
+          }
+        });
+
+        document.getElementById("category").value = "Driver";
+        document.getElementById("name").value = "";
+        document.getElementById("doc").value = "";
+        document.getElementById("date").value = "";
+        document.getElementById("file").value = "";
+        document.getElementById("email").value = "";
+
+        await loadDocs();
+        alert("Document saved.");
+      } catch (error) {
+        console.error(error);
+        alert("Save failed. Please try again.");
+      }
+    };
+
+    async function loadDocs() {
+      const querySnapshot = await getDocs(collection(db, "documents"));
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const li = document.createElement("li");
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const expiry = new Date(data.date);
+        expiry.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+
+        let status = "";
+        let color = "black";
+
+        if (diffDays < 0) {
+          status = "❌ EXPIRED";
+          color = "red";
+        } else if (diffDays === 0) {
+          status = "⚠️ EXPIRES TODAY";
+          color = "orange";
+        } else if (diffDays === 1) {
+          status = "⚠️ DUE TOMORROW";
+          color = "orange";
+        } else if (diffDays <= 7) {
+          status = "⚠️ DUE IN 7 DAYS";
+          color = "darkorange";
+        } else if (diffDays <= 30) {
+          status = "⚠️ DUE IN 30 DAYS";
+          color = "goldenrod";
+        } else {
+          status = "✅ VALID";
+          color = "green";
+        }
+
+        li.innerHTML = `
+          <span style="color:${color}; font-weight:bold;">
+            [${data.category || "Uncategorised"}] ${data.name} - ${data.docType} - Expiry: ${data.date} (${status})
+          </span>
+          <br>
+          Reminder: ${data.email || ""}
+          ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
+        `;
+
+        list.appendChild(li);
+      });
     }
 
-    let imageUrl = "";
-
-    if (file) {
-      const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
-      await uploadBytes(storageRef, file);
-      imageUrl = await getDownloadURL(storageRef);
-    }
-
-    await addFirestoreDoc(collection(db, "documents"), {
-      name,
-      docType,
-      date,
-      email,
-      imageUrl,
-      created: new Date().toISOString()
-    });
-
-// SEND TEST EMAIL IMMEDIATELY
-await addFirestoreDoc(collection(db, "mail"), {
-  to: email,
-  message: {
-    subject: `Test Reminder: ${docType}`,
-    text: `${name}'s ${docType} expires on ${date}`
-  }
-});
-
-    document.getElementById("name").value = "";
-    document.getElementById("doc").value = "";
-    document.getElementById("date").value = "";
-    document.getElementById("file").value = "";
-    document.getElementById("email").value = "";
-
-    await loadDocs();
-    alert("Document saved.");
-  } catch (error) {
-    console.error(error);
-    alert("Save failed. Please try again.");
-  }
-};
-
-async function loadDocs() {
-  const querySnapshot = await getDocs(collection(db, "documents"));
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    const li = document.createElement("li");
-
-    const today = new Date();
-today.setHours(0, 0, 0, 0);
-
-const expiry = new Date(data.date);
-expiry.setHours(0, 0, 0, 0);
-
-const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-
-let status = "";
-let color = "black";
-
-if (diffDays < 0) {
-  status = "❌ EXPIRED";
-  color = "red";
-} else if (diffDays <= 1) {
-  status = "⚠️ DUE TOMORROW";
-  color = "orange";
-} else if (diffDays <= 7) {
-  status = "⚠️ DUE IN 7 DAYS";
-  color = "darkorange";
-} else if (diffDays <= 30) {
-  status = "⚠️ DUE IN 30 DAYS";
-  color = "goldenrod";
-} else {
-  status = "✅ VALID";
-  color = "green";
-}
-
-li.innerHTML = `
-  <span style="color:${color}; font-weight:bold;">
-    ${data.name} - ${data.docType} - Expiry: ${data.date} (${status})
-  </span>
-  <br>
-  Reminder: ${data.email || ""}
-  ${data.imageUrl ? `<br><a href="${data.imageUrl}" target="_blank">View Document</a>` : ""}
-`;
-
-    list.appendChild(li);
-  });
-}
-
-loadDocs();
-</script>
+    loadDocs();
+  </script>
 
 </body>
 </html>
