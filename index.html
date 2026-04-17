@@ -19,11 +19,11 @@
     }
 
     .header img {
-      max-width: 260px;
+      max-width: 240px;
       width: 100%;
       height: auto;
       display: block;
-      margin: 0 auto 12px;
+      margin: 0 auto 10px;
     }
 
     .header h1 {
@@ -38,7 +38,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1250px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -57,7 +57,7 @@
       gap: 16px;
     }
 
-    input, select, button {
+    input, select, button, textarea {
       width: 100%;
       padding: 10px;
       margin-top: 6px;
@@ -96,6 +96,27 @@
       background: #8b1f2a;
     }
 
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tabs button {
+      width: auto;
+      min-width: 120px;
+      margin-bottom: 0;
+    }
+
+    .tab-section {
+      display: none;
+    }
+
+    .tab-section.active {
+      display: block;
+    }
+
     .list-item {
       border-bottom: 1px solid #eee;
       padding: 14px 0;
@@ -125,21 +146,39 @@
       margin-bottom: 4px;
     }
 
-    .status {
-      font-weight: bold;
-    }
-
     .actions {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
       flex-wrap: wrap;
+      margin-top: 10px;
     }
 
     .actions button {
       width: auto;
-      min-width: 120px;
+      min-width: 110px;
       margin-bottom: 0;
+    }
+
+    .click-item {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: #fafafa;
+    }
+
+    .click-item:hover {
+      background: #f1f1f1;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     .edit-banner {
@@ -152,7 +191,22 @@
       font-size: 14px;
     }
 
-    @media (max-width: 700px) {
+    .auth-wrap {
+      max-width: 480px;
+      margin: 30px auto;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 800px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
       .actions {
         flex-direction: column;
       }
@@ -167,143 +221,267 @@
   <div class="header">
     <img src="logo.png" alt="TUC DocuTrack Logo">
     <h1>TUC DocuTrack</h1>
-    <p>Compliance document tracking for drivers, trucks, trailers and company records</p>
+    <p>Document control for drivers, trucks, trailers and company compliance</p>
   </div>
 
   <div class="container">
-    <div class="card">
-      <h2>Register Master Data</h2>
-      <div class="grid">
-        <div>
-          <h3>Add Driver</h3>
-          <input id="newDriver" placeholder="Enter driver name">
-          <button onclick="addDriver()">Save Driver</button>
-        </div>
+    <div id="authArea" class="auth-wrap">
+      <div class="card">
+        <h2>Register</h2>
+        <input id="regName" placeholder="Full Name">
+        <input id="regEmail" type="email" placeholder="Email">
+        <input id="regPassword" type="password" placeholder="Password">
+        <select id="regRole">
+          <option value="">Select Role</option>
+          <option value="Driver">Driver</option>
+          <option value="Controller">Controller</option>
+          <option value="Manager">Manager</option>
+        </select>
+        <button onclick="registerUser()">Register</button>
+      </div>
 
-        <div>
-          <h3>Add Truck</h3>
-          <input id="newTruck" placeholder="Enter truck / fleet number">
-          <button onclick="addTruck()">Save Truck</button>
-        </div>
-
-        <div>
-          <h3>Add Trailer</h3>
-          <input id="newTrailer" placeholder="Enter trailer number">
-          <button onclick="addTrailer()">Save Trailer</button>
-        </div>
-
-        <div>
-          <h3>Add Company</h3>
-          <input id="newCompany" placeholder="Enter company name">
-          <button onclick="addCompany()">Save Company</button>
-        </div>
-
-        <div>
-          <h3>Add Document Type</h3>
-          <input id="newDocType" placeholder="Enter document type">
-          <button onclick="addDocumentType()">Save Document Type</button>
-        </div>
+      <div class="card">
+        <h2>Login</h2>
+        <input id="loginEmail" type="email" placeholder="Email">
+        <input id="loginPassword" type="password" placeholder="Password">
+        <button onclick="loginUser()">Login</button>
       </div>
     </div>
 
-    <div class="card">
-      <h2 id="formTitle">Add Compliance Document</h2>
-
-      <div id="editBanner" class="edit-banner hidden">
-        You are editing an existing document. Update the expiry date and upload a new file if needed.
-      </div>
-
-      <label>Document Owner Type</label>
-      <select id="ownerType" onchange="updateOwnerDropdown()">
-        <option value="">Select Owner Type</option>
-        <option value="Driver">Driver</option>
-        <option value="Truck">Truck</option>
-        <option value="Trailer">Trailer</option>
-        <option value="Company">Company</option>
-      </select>
-
-      <div id="driverBlock" class="hidden">
-        <label>Select Driver</label>
-        <select id="driverSelect"></select>
-      </div>
-
-      <div id="truckBlock" class="hidden">
-        <label>Select Truck</label>
-        <select id="truckSelect"></select>
-      </div>
-
-      <div id="trailerBlock" class="hidden">
-        <label>Select Trailer</label>
-        <select id="trailerSelect"></select>
-      </div>
-
-      <div id="companyBlock" class="hidden">
-        <label>Select Company</label>
-        <select id="companySelect"></select>
-      </div>
-
-      <label>Document Type</label>
-      <select id="docTypeSelect"></select>
-
-      <label>Or type a new document type</label>
-      <input id="customDocType" placeholder="Example: Cross-border permit or Fire Training Certificate">
-
-      <label>Expiry Date</label>
-      <input id="date" type="date">
-
-      <label>Reminder Email</label>
-      <input id="email" type="email" placeholder="Reminder Email">
-
-      <label>Upload Document</label>
-      <input id="file" type="file">
-
-      <div class="actions">
-        <button id="saveBtn" onclick="saveDocument()">Save Document</button>
-        <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Master Lists</h2>
-      <div class="grid">
+    <div id="appArea" class="hidden">
+      <div class="card topbar">
         <div>
-          <h3>Drivers</h3>
-          <div id="driversList"></div>
+          <strong id="welcomeText"></strong>
+          <div class="small" id="roleText"></div>
         </div>
-        <div>
-          <h3>Trucks</h3>
-          <div id="trucksList"></div>
-        </div>
-        <div>
-          <h3>Trailers</h3>
-          <div id="trailersList"></div>
-        </div>
-        <div>
-          <h3>Companies</h3>
-          <div id="companiesList"></div>
-        </div>
-        <div>
-          <h3>Document Types</h3>
-          <div id="docTypesList"></div>
+        <div class="actions">
+          <button class="secondary-btn" onclick="logoutUser()">Logout</button>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h2>Saved Documents</h2>
-      <div id="documentsList"></div>
+      <div class="tabs">
+        <button onclick="showTab('masterTab')">Master Lists</button>
+        <button onclick="showTab('driversTab')">Drivers</button>
+        <button onclick="showTab('trucksTab')">Trucks</button>
+        <button onclick="showTab('trailersTab')">Trailers</button>
+        <button onclick="showTab('companyTab')">Company Docs</button>
+        <button onclick="showTab('allDocsTab')">All Docs</button>
+        <button onclick="showTab('addDocTab')">Add / Edit Document</button>
+      </div>
+
+      <div id="masterTab" class="tab-section active">
+        <div class="card">
+          <h2>Master Lists</h2>
+          <div class="grid">
+            <div>
+              <h3>Drivers</h3>
+              <div id="managerDriverTools" class="hidden">
+                <input id="newDriver" placeholder="Enter driver name">
+                <button onclick="addDriver()">Save Driver</button>
+              </div>
+              <div id="driversList"></div>
+            </div>
+
+            <div>
+              <h3>Trucks</h3>
+              <div id="managerTruckTools" class="hidden">
+                <input id="newTruck" placeholder="Enter truck / fleet number">
+                <button onclick="addTruck()">Save Truck</button>
+              </div>
+              <div id="trucksList"></div>
+            </div>
+
+            <div>
+              <h3>Trailers</h3>
+              <div id="managerTrailerTools" class="hidden">
+                <input id="newTrailer" placeholder="Enter trailer number">
+                <button onclick="addTrailer()">Save Trailer</button>
+              </div>
+              <div id="trailersList"></div>
+            </div>
+
+            <div>
+              <h3>Companies</h3>
+              <div id="managerCompanyTools" class="hidden">
+                <input id="newCompany" placeholder="Enter company name">
+                <button onclick="addCompany()">Save Company</button>
+              </div>
+              <div id="companiesList"></div>
+            </div>
+
+            <div>
+              <h3>Document Types</h3>
+              <div id="managerDocTypeTools" class="hidden">
+                <input id="newDocType" placeholder="Enter document type">
+                <button onclick="addDocumentType()">Save Document Type</button>
+              </div>
+              <div id="docTypesList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="driversTab" class="tab-section">
+        <div class="card">
+          <h2>Drivers</h2>
+          <div class="grid">
+            <div>
+              <h3>Driver List</h3>
+              <div id="driversBrowse"></div>
+            </div>
+            <div>
+              <h3>Selected Driver Documents</h3>
+              <div id="driverDocsView"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="trucksTab" class="tab-section">
+        <div class="card">
+          <h2>Trucks</h2>
+          <div class="grid">
+            <div>
+              <h3>Truck List</h3>
+              <div id="trucksBrowse"></div>
+            </div>
+            <div>
+              <h3>Selected Truck Documents</h3>
+              <div id="truckDocsView"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="trailersTab" class="tab-section">
+        <div class="card">
+          <h2>Trailers</h2>
+          <div class="grid">
+            <div>
+              <h3>Trailer List</h3>
+              <div id="trailersBrowse"></div>
+            </div>
+            <div>
+              <h3>Selected Trailer Documents</h3>
+              <div id="trailerDocsView"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="companyTab" class="tab-section">
+        <div class="card">
+          <h2>Company Docs</h2>
+          <div class="grid">
+            <div>
+              <h3>Company List</h3>
+              <div id="companiesBrowse"></div>
+            </div>
+            <div>
+              <h3>Selected Company Documents</h3>
+              <div id="companyDocsView"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="allDocsTab" class="tab-section">
+        <div class="card">
+          <h2>All Documents</h2>
+          <div class="two-col">
+            <div>
+              <label>Sort By Expiry</label>
+              <select id="sortOrder" onchange="renderAllDocuments()">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+          </div>
+          <div id="allDocumentsView"></div>
+        </div>
+      </div>
+
+      <div id="addDocTab" class="tab-section">
+        <div class="card">
+          <h2 id="formTitle">Add / Edit Document</h2>
+
+          <div id="editBanner" class="edit-banner hidden">
+            You are editing an existing document.
+          </div>
+
+          <label>Document Owner Type</label>
+          <select id="ownerType" onchange="updateOwnerDropdown()">
+            <option value="">Select Owner Type</option>
+            <option value="Driver">Driver</option>
+            <option value="Truck">Truck</option>
+            <option value="Trailer">Trailer</option>
+            <option value="Company">Company</option>
+          </select>
+
+          <div id="driverBlock" class="hidden">
+            <label>Select Driver</label>
+            <select id="driverSelect"></select>
+          </div>
+
+          <div id="truckBlock" class="hidden">
+            <label>Select Truck</label>
+            <select id="truckSelect"></select>
+          </div>
+
+          <div id="trailerBlock" class="hidden">
+            <label>Select Trailer</label>
+            <select id="trailerSelect"></select>
+          </div>
+
+          <div id="companyBlock" class="hidden">
+            <label>Select Company</label>
+            <select id="companySelect"></select>
+          </div>
+
+          <label>Document Type</label>
+          <select id="docTypeSelect"></select>
+
+          <label>Or type a new document type</label>
+          <input id="customDocType" placeholder="Example: Fire Training Certificate">
+
+          <label>Expiry Date</label>
+          <input id="date" type="date">
+
+          <label>Reminder Email</label>
+          <input id="email" type="email" placeholder="Reminder Email">
+
+          <label>Upload Document</label>
+          <input id="file" type="file">
+
+          <div class="actions">
+            <button id="saveBtn" onclick="saveDocument()">Save Document</button>
+            <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
       getFirestore,
       collection,
       addDoc,
       getDocs,
       doc,
-      updateDoc
+      getDoc,
+      updateDoc,
+      deleteDoc,
+      query,
+      where
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage,
@@ -322,9 +500,11 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
+    let currentUserProfile = null;
     let drivers = [];
     let trucks = [];
     let trailers = [];
@@ -333,6 +513,18 @@
     let documents = [];
     let editingDocumentId = null;
     let existingImageUrl = "";
+    let selectedDriver = "";
+    let selectedTruck = "";
+    let selectedTrailer = "";
+    let selectedCompany = "";
+
+    function isManager() {
+      return currentUserProfile?.role === "Manager";
+    }
+
+    function isDriver() {
+      return currentUserProfile?.role === "Driver";
+    }
 
     function sortByField(arr, field) {
       return arr.sort((a, b) => (a[field] || "").localeCompare(b[field] || ""));
@@ -341,167 +533,186 @@
     function getStatusInfo(dateString) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
       const expiry = new Date(dateString);
       expiry.setHours(0, 0, 0, 0);
-
       const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-      if (diffDays < 0) return { text: "❌ EXPIRED", color: "red" };
-      if (diffDays === 0) return { text: "⚠️ EXPIRES TODAY", color: "orange" };
-      if (diffDays === 1) return { text: "⚠️ DUE TOMORROW", color: "orange" };
-      if (diffDays <= 7) return { text: "⚠️ DUE IN 7 DAYS", color: "darkorange" };
-      if (diffDays <= 30) return { text: "⚠️ DUE IN 30 DAYS", color: "goldenrod" };
-      return { text: "✅ VALID", color: "green" };
+      if (diffDays < 0) return { text: "❌ EXPIRED", color: "red", diffDays };
+      if (diffDays === 0) return { text: "⚠️ EXPIRES TODAY", color: "orange", diffDays };
+      if (diffDays === 1) return { text: "⚠️ DUE TOMORROW", color: "orange", diffDays };
+      if (diffDays <= 7) return { text: "⚠️ DUE IN 7 DAYS", color: "darkorange", diffDays };
+      if (diffDays <= 30) return { text: "⚠️ DUE IN 30 DAYS", color: "goldenrod", diffDays };
+      return { text: "✅ VALID", color: "green", diffDays };
     }
 
-    async function loadCollection(collectionName) {
-      const snap = await getDocs(collection(db, collectionName));
+    function showTab(tabId) {
+      document.querySelectorAll(".tab-section").forEach(el => el.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+    }
+
+    async function loadCollection(name) {
+      const snap = await getDocs(collection(db, name));
       const items = [];
-      snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => items.push({ id: d.id, ...d.data() }));
       return items;
+    }
+
+    async function loadUsersProfile(uid) {
+      const snap = await getDoc(doc(db, "users", uid));
+      if (!snap.exists()) return null;
+      return { id: snap.id, ...snap.data() };
     }
 
     async function loadDrivers() {
       drivers = await loadCollection("drivers");
       sortByField(drivers, "name");
-      renderDrivers();
-      renderDriverDropdown();
+      renderMasterList("driversList", drivers, "name", "drivers");
+      renderBrowseList("driversBrowse", drivers, "name", "Driver");
+      renderSelect("driverSelect", drivers.map(x => x.name), "Select Driver");
     }
 
     async function loadTrucks() {
       trucks = await loadCollection("trucks");
       sortByField(trucks, "fleetNumber");
-      renderTrucks();
-      renderTruckDropdown();
+      renderMasterList("trucksList", trucks, "fleetNumber", "trucks");
+      renderBrowseList("trucksBrowse", trucks, "fleetNumber", "Truck");
+      renderSelect("truckSelect", trucks.map(x => x.fleetNumber), "Select Truck");
     }
 
     async function loadTrailers() {
       trailers = await loadCollection("trailers");
       sortByField(trailers, "trailerNumber");
-      renderTrailers();
-      renderTrailerDropdown();
+      renderMasterList("trailersList", trailers, "trailerNumber", "trailers");
+      renderBrowseList("trailersBrowse", trailers, "trailerNumber", "Trailer");
+      renderSelect("trailerSelect", trailers.map(x => x.trailerNumber), "Select Trailer");
     }
 
     async function loadCompanies() {
       companies = await loadCollection("companies");
       sortByField(companies, "name");
-      renderCompanies();
-      renderCompanyDropdown();
+      renderMasterList("companiesList", companies, "name", "companies");
+      renderBrowseList("companiesBrowse", companies, "name", "Company");
+      renderSelect("companySelect", companies.map(x => x.name), "Select Company");
     }
 
     async function loadDocumentTypes() {
       documentTypes = await loadCollection("documentTypes");
       sortByField(documentTypes, "name");
-      renderDocumentTypes();
-      renderDocumentTypeDropdown();
+      renderMasterList("docTypesList", documentTypes, "name", "documentTypes");
+      renderSelect("docTypeSelect", documentTypes.map(x => x.name), "Select Document Type");
     }
 
     async function loadDocuments() {
       documents = await loadCollection("documents");
-      documents.sort((a, b) => (a.ownerName || "").localeCompare(b.ownerName || ""));
-      renderDocuments();
+      renderAllDocuments();
+      renderOwnerDocs();
     }
 
-    function renderDriverDropdown() {
-      const select = document.getElementById("driverSelect");
-      select.innerHTML = `<option value="">Select Driver</option>`;
-      drivers.forEach((item) => {
-        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
+    function renderSelect(id, values, placeholder) {
+      const el = document.getElementById(id);
+      el.innerHTML = `<option value="">${placeholder}</option>`;
+      values.forEach(v => {
+        el.innerHTML += `<option value="${v}">${v}</option>`;
       });
     }
 
-    function renderTruckDropdown() {
-      const select = document.getElementById("truckSelect");
-      select.innerHTML = `<option value="">Select Truck</option>`;
-      trucks.forEach((item) => {
-        select.innerHTML += `<option value="${item.fleetNumber}">${item.fleetNumber}</option>`;
-      });
-    }
-
-    function renderTrailerDropdown() {
-      const select = document.getElementById("trailerSelect");
-      select.innerHTML = `<option value="">Select Trailer</option>`;
-      trailers.forEach((item) => {
-        select.innerHTML += `<option value="${item.trailerNumber}">${item.trailerNumber}</option>`;
-      });
-    }
-
-    function renderCompanyDropdown() {
-      const select = document.getElementById("companySelect");
-      select.innerHTML = `<option value="">Select Company</option>`;
-      companies.forEach((item) => {
-        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
-      });
-    }
-
-    function renderDocumentTypeDropdown() {
-      const select = document.getElementById("docTypeSelect");
-      select.innerHTML = `<option value="">Select Document Type</option>`;
-      documentTypes.forEach((item) => {
-        select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
-      });
-    }
-
-    function renderSimpleList(elementId, items, field, emptyText) {
+    function renderMasterList(elementId, items, field, collectionName) {
       const box = document.getElementById(elementId);
-      box.innerHTML = items.length
-        ? items.map(item => `<div class="list-item">${item[field]}</div>`).join("")
-        : `<div class="small">${emptyText}</div>`;
+      if (!items.length) {
+        box.innerHTML = `<div class="small">No records yet.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(item => `
+        <div class="list-item">
+          ${item[field]}
+          ${isManager() ? `<div class="actions"><button class="danger-btn" onclick="removeMasterItem('${collectionName}','${item.id}')">Remove</button></div>` : ""}
+        </div>
+      `).join("");
     }
 
-    function renderDrivers() {
-      renderSimpleList("driversList", drivers, "name", "No drivers saved yet.");
+    function renderBrowseList(elementId, items, field, ownerType) {
+      const box = document.getElementById(elementId);
+      if (!items.length) {
+        box.innerHTML = `<div class="small">No records yet.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(item => `
+        <div class="click-item" onclick="selectOwnerDocs('${ownerType}','${item[field]}')">
+          ${item[field]}
+        </div>
+      `).join("");
     }
 
-    function renderTrucks() {
-      renderSimpleList("trucksList", trucks, "fleetNumber", "No trucks saved yet.");
+    function renderOwnerDocs() {
+      renderFilteredDocs("driverDocsView", "Driver", selectedDriver);
+      renderFilteredDocs("truckDocsView", "Truck", selectedTruck);
+      renderFilteredDocs("trailerDocsView", "Trailer", selectedTrailer);
+      renderFilteredDocs("companyDocsView", "Company", selectedCompany);
     }
 
-    function renderTrailers() {
-      renderSimpleList("trailersList", trailers, "trailerNumber", "No trailers saved yet.");
+    function renderFilteredDocs(elementId, ownerType, ownerName) {
+      const box = document.getElementById(elementId);
+      if (!ownerName) {
+        box.innerHTML = `<div class="small">Select a ${ownerType.toLowerCase()} to view documents.</div>`;
+        return;
+      }
+
+      const filtered = documents.filter(d => d.ownerType === ownerType && d.ownerName === ownerName);
+
+      if (!filtered.length) {
+        box.innerHTML = `<div class="small">No documents for ${ownerName}.</div>`;
+        return;
+      }
+
+      box.innerHTML = filtered.map(item => renderDocCard(item)).join("");
     }
 
-    function renderCompanies() {
-      renderSimpleList("companiesList", companies, "name", "No companies saved yet.");
-    }
+    function renderAllDocuments() {
+      const box = document.getElementById("allDocumentsView");
+      let items = [...documents];
 
-    function renderDocumentTypes() {
-      renderSimpleList("docTypesList", documentTypes, "name", "No document types saved yet.");
-    }
+      items.sort((a, b) => {
+        const da = new Date(a.date).getTime();
+        const dbt = new Date(b.date).getTime();
+        return document.getElementById("sortOrder").value === "asc" ? da - dbt : dbt - da;
+      });
 
-    function renderDocuments() {
-      const box = document.getElementById("documentsList");
-
-      if (!documents.length) {
+      if (!items.length) {
         box.innerHTML = `<div class="small">No documents saved yet.</div>`;
         return;
       }
 
-      box.innerHTML = documents.map((item) => {
-        const status = getStatusInfo(item.date);
+      box.innerHTML = items.map(item => renderDocCard(item)).join("");
+    }
 
-        return `
-          <div class="list-item">
-            <div class="doc-title" style="color:${status.color}">
-              [${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})
-            </div>
+    function canEditDocument(item) {
+      if (isManager()) return true;
+      if (currentUserProfile?.role === "Controller") return true;
+      if (isDriver()) {
+        return item.ownerType === "Driver" && item.ownerName === currentUserProfile.name;
+      }
+      return false;
+    }
 
-            <div class="small">
-              <span class="pill">Expiry: ${item.date}</span>
-              <span class="pill">Owner Type: ${item.ownerType}</span>
-            </div>
+    function renderDocCard(item) {
+      const status = getStatusInfo(item.date);
 
-            <div class="small">Reminder Email: ${item.email || ""}</div>
-
-            ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
-
-            <div class="actions">
-              <button onclick="editDocument('${item.id}')">Edit</button>
-            </div>
+      return `
+        <div class="list-item">
+          <div class="doc-title" style="color:${status.color}">
+            [${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})
           </div>
-        `;
-      }).join("");
+          <div class="small">
+            <span class="pill">Expiry: ${item.date}</span>
+            <span class="pill">Owner Type: ${item.ownerType}</span>
+          </div>
+          <div class="small">Reminder Email: ${item.email || ""}</div>
+          ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
+          ${canEditDocument(item) ? `<div class="actions"><button onclick="editDocument('${item.id}')">Edit</button></div>` : ""}
+        </div>
+      `;
     }
 
     function hideAllOwnerBlocks() {
@@ -515,96 +726,10 @@
       const ownerType = document.getElementById("ownerType").value;
       hideAllOwnerBlocks();
 
-      if (ownerType === "Driver") {
-        document.getElementById("driverBlock").classList.remove("hidden");
-      } else if (ownerType === "Truck") {
-        document.getElementById("truckBlock").classList.remove("hidden");
-      } else if (ownerType === "Trailer") {
-        document.getElementById("trailerBlock").classList.remove("hidden");
-      } else if (ownerType === "Company") {
-        document.getElementById("companyBlock").classList.remove("hidden");
-      }
-    };
-
-    async function addIfNotExists(collectionName, fieldName, value, cacheArray, cacheField) {
-      const trimmed = value.trim();
-      if (!trimmed) return;
-
-      const exists = cacheArray.some(item =>
-        (item[cacheField] || "").toLowerCase() === trimmed.toLowerCase()
-      );
-
-      if (!exists) {
-        await addDoc(collection(db, collectionName), {
-          [fieldName]: trimmed,
-          created: new Date().toISOString()
-        });
-      }
-    }
-
-    window.addDriver = async function () {
-      const value = document.getElementById("newDriver").value.trim();
-      if (!value) {
-        alert("Please enter a driver name.");
-        return;
-      }
-
-      await addIfNotExists("drivers", "name", value, drivers, "name");
-      document.getElementById("newDriver").value = "";
-      await loadDrivers();
-      alert("Driver saved.");
-    };
-
-    window.addTruck = async function () {
-      const value = document.getElementById("newTruck").value.trim();
-      if (!value) {
-        alert("Please enter a truck number.");
-        return;
-      }
-
-      await addIfNotExists("trucks", "fleetNumber", value, trucks, "fleetNumber");
-      document.getElementById("newTruck").value = "";
-      await loadTrucks();
-      alert("Truck saved.");
-    };
-
-    window.addTrailer = async function () {
-      const value = document.getElementById("newTrailer").value.trim();
-      if (!value) {
-        alert("Please enter a trailer number.");
-        return;
-      }
-
-      await addIfNotExists("trailers", "trailerNumber", value, trailers, "trailerNumber");
-      document.getElementById("newTrailer").value = "";
-      await loadTrailers();
-      alert("Trailer saved.");
-    };
-
-    window.addCompany = async function () {
-      const value = document.getElementById("newCompany").value.trim();
-      if (!value) {
-        alert("Please enter a company name.");
-        return;
-      }
-
-      await addIfNotExists("companies", "name", value, companies, "name");
-      document.getElementById("newCompany").value = "";
-      await loadCompanies();
-      alert("Company saved.");
-    };
-
-    window.addDocumentType = async function () {
-      const value = document.getElementById("newDocType").value.trim();
-      if (!value) {
-        alert("Please enter a document type.");
-        return;
-      }
-
-      await addIfNotExists("documentTypes", "name", value, documentTypes, "name");
-      document.getElementById("newDocType").value = "";
-      await loadDocumentTypes();
-      alert("Document type saved.");
+      if (ownerType === "Driver") document.getElementById("driverBlock").classList.remove("hidden");
+      if (ownerType === "Truck") document.getElementById("truckBlock").classList.remove("hidden");
+      if (ownerType === "Trailer") document.getElementById("trailerBlock").classList.remove("hidden");
+      if (ownerType === "Company") document.getElementById("companyBlock").classList.remove("hidden");
     };
 
     function getOwnerNameByType(ownerType) {
@@ -615,11 +740,176 @@
       return "";
     }
 
+    async function addIfNotExists(collectionName, fieldName, value, existingItems, existingField) {
+      const trimmed = value.trim();
+      if (!trimmed) return { added: false, exists: false };
+
+      const exists = existingItems.some(item =>
+        (item[existingField] || "").toLowerCase() === trimmed.toLowerCase()
+      );
+
+      if (exists) return { added: false, exists: true };
+
+      await addDoc(collection(db, collectionName), {
+        [fieldName]: trimmed,
+        created: new Date().toISOString()
+      });
+
+      return { added: true, exists: false };
+    }
+
+    window.registerUser = async function () {
+      try {
+        const name = document.getElementById("regName").value.trim();
+        const email = document.getElementById("regEmail").value.trim();
+        const password = document.getElementById("regPassword").value;
+        const role = document.getElementById("regRole").value;
+
+        if (!name || !email || !password || !role) {
+          alert("Please fill in all registration fields.");
+          return;
+        }
+
+        if (role === "Driver") {
+          const existingDrivers = await loadCollection("drivers");
+          const duplicate = existingDrivers.some(d => (d.name || "").toLowerCase() === name.toLowerCase());
+          if (duplicate) {
+            alert("That driver name already exists. Driver names cannot be duplicated.");
+            return;
+          }
+        }
+
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+        await updateDoc(doc(db, "users", cred.user.uid), {}).catch(async () => {
+          await addDoc(collection(db, "temp"), { cleanup: true }).catch(() => {});
+        });
+
+        await setUserProfile(cred.user.uid, {
+          name,
+          email,
+          role,
+          created: new Date().toISOString()
+        });
+
+        if (role === "Driver") {
+          await addDoc(collection(db, "drivers"), {
+            name,
+            created: new Date().toISOString(),
+            userId: cred.user.uid
+          });
+        }
+
+        alert("Registration successful.");
+      } catch (error) {
+        console.error(error);
+        alert("Registration failed. Check email, password, or duplicate driver name.");
+      }
+    };
+
+    async function setUserProfile(uid, data) {
+      await updateDoc(doc(db, "users", uid), data).catch(async () => {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js").then(async (m) => {
+            await m.setDoc(userRef, data);
+          });
+        } else {
+          await updateDoc(userRef, data);
+        }
+      });
+    }
+
+    window.loginUser = async function () {
+      try {
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        console.error(error);
+        alert("Login failed.");
+      }
+    };
+
+    window.logoutUser = async function () {
+      await signOut(auth);
+    };
+
+    window.addDriver = async function () {
+      if (!isManager()) return alert("Only managers can add drivers.");
+      const value = document.getElementById("newDriver").value.trim();
+      if (!value) return alert("Please enter a driver name.");
+
+      const result = await addIfNotExists("drivers", "name", value, drivers, "name");
+      if (result.exists) return alert("Driver name already exists.");
+
+      document.getElementById("newDriver").value = "";
+      await loadDrivers();
+      alert("Driver saved.");
+    };
+
+    window.addTruck = async function () {
+      if (!isManager()) return alert("Only managers can add trucks.");
+      const value = document.getElementById("newTruck").value.trim();
+      if (!value) return alert("Please enter a truck number.");
+
+      await addIfNotExists("trucks", "fleetNumber", value, trucks, "fleetNumber");
+      document.getElementById("newTruck").value = "";
+      await loadTrucks();
+      alert("Truck saved.");
+    };
+
+    window.addTrailer = async function () {
+      if (!isManager()) return alert("Only managers can add trailers.");
+      const value = document.getElementById("newTrailer").value.trim();
+      if (!value) return alert("Please enter a trailer number.");
+
+      await addIfNotExists("trailers", "trailerNumber", value, trailers, "trailerNumber");
+      document.getElementById("newTrailer").value = "";
+      await loadTrailers();
+      alert("Trailer saved.");
+    };
+
+    window.addCompany = async function () {
+      if (!isManager()) return alert("Only managers can add companies.");
+      const value = document.getElementById("newCompany").value.trim();
+      if (!value) return alert("Please enter a company name.");
+
+      await addIfNotExists("companies", "name", value, companies, "name");
+      document.getElementById("newCompany").value = "";
+      await loadCompanies();
+      alert("Company saved.");
+    };
+
+    window.addDocumentType = async function () {
+      if (!isManager() && currentUserProfile?.role !== "Controller") return alert("Not allowed.");
+      const value = document.getElementById("newDocType").value.trim();
+      if (!value) return alert("Please enter a document type.");
+
+      await addIfNotExists("documentTypes", "name", value, documentTypes, "name");
+      document.getElementById("newDocType").value = "";
+      await loadDocumentTypes();
+      alert("Document type saved.");
+    };
+
+    window.removeMasterItem = async function (collectionName, id) {
+      if (!isManager()) return alert("Only managers can remove master records.");
+      if (!confirm("Remove this item?")) return;
+      await deleteDoc(doc(db, collectionName, id));
+
+      if (collectionName === "drivers") await loadDrivers();
+      if (collectionName === "trucks") await loadTrucks();
+      if (collectionName === "trailers") await loadTrailers();
+      if (collectionName === "companies") await loadCompanies();
+      if (collectionName === "documentTypes") await loadDocumentTypes();
+    };
+
     function resetForm() {
       editingDocumentId = null;
       existingImageUrl = "";
 
-      document.getElementById("formTitle").innerText = "Add Compliance Document";
+      document.getElementById("formTitle").innerText = "Add / Edit Document";
       document.getElementById("editBanner").classList.add("hidden");
       document.getElementById("saveBtn").innerText = "Save Document";
       document.getElementById("cancelEditBtn").classList.add("hidden");
@@ -634,7 +924,6 @@
       document.getElementById("date").value = "";
       document.getElementById("email").value = "";
       document.getElementById("file").value = "";
-
       hideAllOwnerBlocks();
     }
 
@@ -643,13 +932,14 @@
     };
 
     window.editDocument = function (id) {
-      const item = documents.find(doc => doc.id === id);
+      const item = documents.find(d => d.id === id);
       if (!item) return;
+      if (!canEditDocument(item)) return alert("You are not allowed to edit this document.");
 
       editingDocumentId = id;
       existingImageUrl = item.imageUrl || "";
 
-      document.getElementById("formTitle").innerText = "Edit Compliance Document";
+      document.getElementById("formTitle").innerText = "Edit Document";
       document.getElementById("editBanner").classList.remove("hidden");
       document.getElementById("saveBtn").innerText = "Update Document";
       document.getElementById("cancelEditBtn").classList.remove("hidden");
@@ -657,18 +947,13 @@
       document.getElementById("ownerType").value = item.ownerType || "";
       updateOwnerDropdown();
 
-      if (item.ownerType === "Driver") {
-        document.getElementById("driverSelect").value = item.ownerName || "";
-      } else if (item.ownerType === "Truck") {
-        document.getElementById("truckSelect").value = item.ownerName || "";
-      } else if (item.ownerType === "Trailer") {
-        document.getElementById("trailerSelect").value = item.ownerName || "";
-      } else if (item.ownerType === "Company") {
-        document.getElementById("companySelect").value = item.ownerName || "";
-      }
+      if (item.ownerType === "Driver") document.getElementById("driverSelect").value = item.ownerName || "";
+      if (item.ownerType === "Truck") document.getElementById("truckSelect").value = item.ownerName || "";
+      if (item.ownerType === "Trailer") document.getElementById("trailerSelect").value = item.ownerName || "";
+      if (item.ownerType === "Company") document.getElementById("companySelect").value = item.ownerName || "";
 
-      const matchingType = documentTypes.find(t => t.name === item.documentType);
-      if (matchingType) {
+      const existingType = documentTypes.find(t => t.name === item.documentType);
+      if (existingType) {
         document.getElementById("docTypeSelect").value = item.documentType;
         document.getElementById("customDocType").value = "";
       } else {
@@ -678,7 +963,7 @@
 
       document.getElementById("date").value = item.date || "";
       document.getElementById("email").value = item.email || "";
-
+      showTab("addDocTab");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -694,8 +979,13 @@
         const file = document.getElementById("file").files[0];
 
         if (!ownerType || !ownerName || !documentType || !date || !email) {
-          alert("Please select owner type, owner, document type, expiry date, and reminder email.");
-          return;
+          return alert("Please complete all required fields.");
+        }
+
+        if (isDriver()) {
+          if (!(ownerType === "Driver" && ownerName === currentUserProfile.name)) {
+            return alert("Drivers can only save or edit their own documents.");
+          }
         }
 
         if (customDocType) {
@@ -704,7 +994,6 @@
         }
 
         let imageUrl = existingImageUrl;
-
         if (file) {
           const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
           await uploadBytes(storageRef, file);
@@ -722,13 +1011,28 @@
         };
 
         if (editingDocumentId) {
+          const item = documents.find(d => d.id === editingDocumentId);
+          if (!canEditDocument(item)) return alert("You are not allowed to edit this document.");
           await updateDoc(doc(db, "documents", editingDocumentId), payload);
           alert("Document updated.");
         } else {
-          await addDoc(collection(db, "documents"), {
+          const newRef = await addDoc(collection(db, "documents"), {
             ...payload,
-            created: new Date().toISOString()
+            created: new Date().toISOString(),
+            addedByUid: auth.currentUser.uid,
+            addedByName: currentUserProfile.name
           });
+
+          await addDoc(collection(db, "mail"), {
+            to: email,
+            message: {
+              subject: `New document added: ${documentType}`,
+              text: `${ownerName} has a new ${documentType} document saved with expiry date ${date}.`
+            },
+            created: new Date().toISOString(),
+            sourceDocumentId: newRef.id
+          });
+
           alert("Document saved.");
         }
 
@@ -736,21 +1040,63 @@
         resetForm();
       } catch (error) {
         console.error(error);
-        alert("Save failed. Please try again.");
+        alert("Save failed.");
       }
     };
 
-    async function init() {
+    window.selectOwnerDocs = function (ownerType, ownerName) {
+      if (ownerType === "Driver") selectedDriver = ownerName;
+      if (ownerType === "Truck") selectedTruck = ownerName;
+      if (ownerType === "Trailer") selectedTrailer = ownerName;
+      if (ownerType === "Company") selectedCompany = ownerName;
+      renderOwnerDocs();
+    };
+
+    function updateRoleUI() {
+      document.getElementById("welcomeText").innerText = `Welcome, ${currentUserProfile?.name || ""}`;
+      document.getElementById("roleText").innerText = `Role: ${currentUserProfile?.role || ""}`;
+
+      const managerOnlyIds = [
+        "managerDriverTools",
+        "managerTruckTools",
+        "managerTrailerTools",
+        "managerCompanyTools",
+        "managerDocTypeTools"
+      ];
+
+      managerOnlyIds.forEach(id => {
+        if (isManager()) {
+          document.getElementById(id).classList.remove("hidden");
+        } else {
+          document.getElementById(id).classList.add("hidden");
+        }
+      });
+    }
+
+    async function initAppData() {
       await loadDrivers();
       await loadTrucks();
       await loadTrailers();
       await loadCompanies();
       await loadDocumentTypes();
       await loadDocuments();
+      updateRoleUI();
       resetForm();
+      showTab("masterTab");
     }
 
-    init();
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserProfile = await loadUsersProfile(user.uid);
+        document.getElementById("authArea").classList.add("hidden");
+        document.getElementById("appArea").classList.remove("hidden");
+        await initAppData();
+      } else {
+        currentUserProfile = null;
+        document.getElementById("authArea").classList.remove("hidden");
+        document.getElementById("appArea").classList.add("hidden");
+      }
+    });
   </script>
 </body>
 </html>
