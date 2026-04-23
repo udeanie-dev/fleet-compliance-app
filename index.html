@@ -245,26 +245,14 @@
     <p>Document control for drivers, trucks, trailers and company compliance</p>
   </div>
 
-  <div id="authArea" class="auth-wrap">
-  <div class="card">
-    <h2>Register</h2>
-    <input id="regName" placeholder="Full Name">
-    <input id="regEmail" type="email" placeholder="Email">
-    <input id="regPassword" type="password" placeholder="Password">
-    <select id="regRole">
-      <option value="">Select Role</option>
-      <option value="Driver">Driver</option>
-      <option value="Controller">Controller</option>
-      <option value="Manager">Manager</option>
-    </select>
-    <button onclick="registerUser()">Register</button>
-  </div>
-
+  <div class="container">
+    <div id="authArea" class="auth-wrap">
       <div class="card">
         <h2>Login</h2>
         <input id="loginEmail" type="email" placeholder="Email">
         <input id="loginPassword" type="password" placeholder="Password">
         <button onclick="loginUser()">Login</button>
+        <div class="small">Access is granted by admin only.</div>
       </div>
     </div>
 
@@ -509,7 +497,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getAuth,
-      createUserWithEmailAndPassword,
       signInWithEmailAndPassword,
       signOut,
       onAuthStateChanged
@@ -522,8 +509,7 @@
       doc,
       getDoc,
       updateDoc,
-      deleteDoc,
-      setDoc
+      deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage,
@@ -841,71 +827,6 @@
       return { added: true, exists: false };
     }
 
-    window.registerUser = async function () {
-      try {
-        const name = document.getElementById("regName").value.trim();
-        const email = document.getElementById("regEmail").value.trim();
-        const password = document.getElementById("regPassword").value;
-        const role = document.getElementById("regRole").value;
-
-        if (!name || !email || !password || !role) {
-          alert("Please fill in all registration fields.");
-          return;
-        }
-
-        if (role === "Driver") {
-          const existingDrivers = await loadCollection("drivers");
-          const duplicate = existingDrivers.some(d => (d.name || "").toLowerCase() === name.toLowerCase());
-          if (duplicate) {
-            alert("That driver name already exists. Driver names cannot be duplicated.");
-            return;
-          }
-        }
-
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-        await setDoc(doc(db, "users", cred.user.uid), {
-          name,
-          email,
-          role,
-          created: new Date().toISOString()
-        });
-
-        if (role === "Driver") {
-          await addDoc(collection(db, "drivers"), {
-            name,
-            created: new Date().toISOString(),
-            userId: cred.user.uid
-          });
-        }
-
-        await addDoc(collection(db, "mail"), {
-          to: email,
-          message: {
-            subject: "Welcome to TUC DocuTrack",
-            text: `Hi ${name}, your account has been created as a ${role}.`
-          },
-          created: new Date().toISOString()
-        });
-
-        alert("Registration successful. You can now log in.");
-      } catch (error) {
-        console.error("Registration error:", error);
-
-        if (error.code === "auth/email-already-in-use") {
-          alert("That email address is already registered.");
-        } else if (error.code === "auth/invalid-email") {
-          alert("That email address is not valid.");
-        } else if (error.code === "auth/weak-password") {
-          alert("Password is too weak.");
-        } else if (error.code === "auth/operation-not-allowed") {
-          alert("Email/password sign-in is not enabled in Firebase Authentication.");
-        } else {
-          alert(`Registration failed: ${error.message}`);
-        }
-      }
-    };
-
     window.loginUser = async function () {
       try {
         const email = document.getElementById("loginEmail").value.trim();
@@ -1186,6 +1107,13 @@
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUserProfile = await loadUsersProfile(user.uid);
+
+        if (!currentUserProfile) {
+          alert("No user profile found. Please contact admin.");
+          await signOut(auth);
+          return;
+        }
+
         document.getElementById("authArea").classList.add("hidden");
         document.getElementById("appArea").classList.remove("hidden");
         await initAppData();
