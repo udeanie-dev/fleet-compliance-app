@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>TUC DocuTrack</title>
+  <title>PermitSphere</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -13,28 +13,29 @@
 
     .header {
       background: white;
-      padding: 20px;
+      padding: 24px;
       text-align: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .header img {
-      max-width: 240px;
+      max-width: 260px;
       width: 100%;
       height: auto;
       display: block;
-      margin: 0 auto 10px;
+      margin: 0 auto 8px;
     }
 
     .header h1 {
       margin: 0;
-      color: #5a2a82;
-      font-size: 32px;
+      color: #5A2D82;
+      font-size: 34px;
     }
 
     .header p {
       margin: 6px 0 0;
-      color: #666;
+      color: #149B91;
+      font-weight: bold;
     }
 
     .container {
@@ -94,7 +95,7 @@
     }
 
     button {
-      background: #5a2a82;
+      background: #5A2D82;
       color: white;
       border: none;
       cursor: pointer;
@@ -102,15 +103,15 @@
     }
 
     button:hover {
-      background: #472066;
+      background: #3e1f5a;
     }
 
     .secondary-btn {
-      background: #6c757d;
+      background: #149B91;
     }
 
     .secondary-btn:hover {
-      background: #545b62;
+      background: #0f756e;
     }
 
     .danger-btn {
@@ -238,11 +239,12 @@
     }
   </style>
 </head>
+
 <body>
   <div class="header">
-    <img src="logo.png" alt="TUC DocuTrack Logo">
-    <h1>TUC DocuTrack</h1>
-    <p>Document control for drivers, trucks, trailers and company compliance</p>
+    <img src="logo.png" alt="PermitSphere Logo">
+    <h1>PermitSphere</h1>
+    <p>Manage. Track. Comply.</p>
   </div>
 
   <div class="container">
@@ -561,8 +563,10 @@
     function getStatusInfo(dateString) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
       const expiry = new Date(dateString);
       expiry.setHours(0, 0, 0, 0);
+
       const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
       if (diffDays < 0) return { text: "❌ EXPIRED", color: "red", diffDays };
@@ -570,6 +574,7 @@
       if (diffDays === 1) return { text: "⚠️ DUE TOMORROW", color: "orange", diffDays };
       if (diffDays <= 7) return { text: "⚠️ DUE IN 7 DAYS", color: "darkorange", diffDays };
       if (diffDays <= 30) return { text: "⚠️ DUE IN 30 DAYS", color: "goldenrod", diffDays };
+
       return { text: "✅ VALID", color: "green", diffDays };
     }
 
@@ -597,9 +602,11 @@
       document.querySelectorAll(".tab-section").forEach(el => {
         el.style.display = "none";
       });
+
       const tab = document.getElementById(tabId);
       if (tab) tab.style.display = "block";
     }
+
     window.showTab = showTab;
 
     async function loadCollection(name) {
@@ -621,6 +628,7 @@
 
       for (let i = 19; i <= 40; i++) {
         const fleetNumber = `TMG ${i}`;
+
         if (!existingSet.has(fleetNumber.toLowerCase())) {
           await addDoc(collection(db, "trucks"), {
             fleetNumber,
@@ -680,6 +688,7 @@
     function renderSelect(id, values, placeholder) {
       const el = document.getElementById(id);
       el.innerHTML = `<option value="">${placeholder}</option>`;
+
       values.forEach(v => {
         el.innerHTML += `<option value="${v}">${v}</option>`;
       });
@@ -687,6 +696,7 @@
 
     function renderMasterList(elementId, items, field, collectionName) {
       const box = document.getElementById(elementId);
+
       if (!items.length) {
         box.innerHTML = `<div class="small">No records yet.</div>`;
         return;
@@ -702,6 +712,7 @@
 
     function renderBrowseList(elementId, items, field, ownerType) {
       const box = document.getElementById(elementId);
+
       if (!items.length) {
         box.innerHTML = `<div class="small">No records yet.</div>`;
         return;
@@ -723,6 +734,7 @@
 
     function renderFilteredDocs(elementId, ownerType, ownerName) {
       const box = document.getElementById(elementId);
+
       if (!ownerName) {
         box.innerHTML = `<div class="small">Select a ${ownerType.toLowerCase()} to view documents.</div>`;
         return;
@@ -738,13 +750,14 @@
       box.innerHTML = filtered.map(item => renderDocCard(item)).join("");
     }
 
-    function renderAllDocuments() {
+    window.renderAllDocuments = function () {
       const box = document.getElementById("allDocumentsView");
       let items = [...documents];
 
       items.sort((a, b) => {
         const da = new Date(a.date).getTime();
         const dbt = new Date(b.date).getTime();
+
         return document.getElementById("sortOrder").value === "asc" ? da - dbt : dbt - da;
       });
 
@@ -754,14 +767,16 @@
       }
 
       box.innerHTML = items.map(item => renderDocCard(item)).join("");
-    }
+    };
 
     function canEditDocument(item) {
       if (isManager()) return true;
       if (currentUserProfile?.role === "Controller") return true;
+
       if (isDriver()) {
         return item.ownerType === "Driver" && item.ownerName === currentUserProfile.name;
       }
+
       return false;
     }
 
@@ -773,12 +788,16 @@
           <div class="doc-title" style="color:${status.color}">
             [${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})
           </div>
+
           <div class="small">
             <span class="pill">Expiry: ${item.date}</span>
             <span class="pill">Owner Type: ${item.ownerType}</span>
           </div>
+
           <div class="small">Reminder Email: ${item.email || ""}</div>
+
           ${item.imageUrl ? `<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>` : ""}
+
           ${canEditDocument(item) ? `<div class="actions"><button onclick="editDocument('${item.id}')">Edit</button></div>` : ""}
         </div>
       `;
@@ -806,11 +825,13 @@
       if (ownerType === "Truck") return document.getElementById("truckSelect").value;
       if (ownerType === "Trailer") return document.getElementById("trailerSelect").value;
       if (ownerType === "Company") return document.getElementById("companySelect").value;
+
       return "";
     }
 
     async function addIfNotExists(collectionName, fieldName, value, existingItems, existingField) {
       const trimmed = value.trim();
+
       if (!trimmed) return { added: false, exists: false };
 
       const exists = existingItems.some(item =>
@@ -840,16 +861,7 @@
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
         console.error("Login error:", error);
-
-        if (error.code === "auth/invalid-email") {
-          alert("That email address is not valid.");
-        } else if (error.code === "auth/user-not-found") {
-          alert("No user found with that email.");
-        } else if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
-          alert("Wrong email or password.");
-        } else {
-          alert(`Login failed: ${error.message}`);
-        }
+        alert(`Login failed: ${error.message}`);
       }
     };
 
@@ -859,10 +871,13 @@
 
     window.addDriver = async function () {
       if (!isManager()) return alert("Only managers can add drivers.");
+
       const value = document.getElementById("newDriver").value.trim();
+
       if (!value) return alert("Please enter a driver name.");
 
       const result = await addIfNotExists("drivers", "name", value, drivers, "name");
+
       if (result.exists) return alert("Driver name already exists.");
 
       document.getElementById("newDriver").value = "";
@@ -872,7 +887,9 @@
 
     window.addTruck = async function () {
       if (!isManager()) return alert("Only managers can add trucks.");
+
       const value = document.getElementById("newTruck").value.trim();
+
       if (!value) return alert("Please enter a truck number.");
 
       await addIfNotExists("trucks", "fleetNumber", value, trucks, "fleetNumber");
@@ -883,7 +900,9 @@
 
     window.addTrailer = async function () {
       if (!isManager()) return alert("Only managers can add trailers.");
+
       const value = document.getElementById("newTrailer").value.trim();
+
       if (!value) return alert("Please enter a trailer number.");
 
       await addIfNotExists("trailers", "trailerNumber", value, trailers, "trailerNumber");
@@ -894,7 +913,9 @@
 
     window.addCompany = async function () {
       if (!isManager()) return alert("Only managers can add companies.");
+
       const value = document.getElementById("newCompany").value.trim();
+
       if (!value) return alert("Please enter a company name.");
 
       await addIfNotExists("companies", "name", value, companies, "name");
@@ -904,8 +925,12 @@
     };
 
     window.addDocumentType = async function () {
-      if (!isManager() && currentUserProfile?.role !== "Controller") return alert("Not allowed.");
+      if (!isManager() && currentUserProfile?.role !== "Controller") {
+        return alert("Not allowed.");
+      }
+
       const value = document.getElementById("newDocType").value.trim();
+
       if (!value) return alert("Please enter a document type.");
 
       await addIfNotExists("documentTypes", "name", value, documentTypes, "name");
@@ -916,7 +941,9 @@
 
     window.removeMasterItem = async function (collectionName, id) {
       if (!isManager()) return alert("Only managers can remove master records.");
+
       if (!confirm("Remove this item?")) return;
+
       await deleteDoc(doc(db, collectionName, id));
 
       if (collectionName === "drivers") await loadDrivers();
@@ -945,6 +972,7 @@
       document.getElementById("date").value = "";
       document.getElementById("email").value = "";
       document.getElementById("file").value = "";
+
       hideAllOwnerBlocks();
     }
 
@@ -954,8 +982,12 @@
 
     window.editDocument = function (id) {
       const item = documents.find(d => d.id === id);
+
       if (!item) return;
-      if (!canEditDocument(item)) return alert("You are not allowed to edit this document.");
+
+      if (!canEditDocument(item)) {
+        return alert("You are not allowed to edit this document.");
+      }
 
       editingDocumentId = id;
       existingImageUrl = item.imageUrl || "";
@@ -974,6 +1006,7 @@
       if (item.ownerType === "Company") document.getElementById("companySelect").value = item.ownerName || "";
 
       const existingType = documentTypes.find(t => t.name === item.documentType);
+
       if (existingType) {
         document.getElementById("docTypeSelect").value = item.documentType;
         document.getElementById("customDocType").value = "";
@@ -984,6 +1017,7 @@
 
       document.getElementById("date").value = item.date || "";
       document.getElementById("email").value = item.email || "";
+
       showTab("addDocTab");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -1000,12 +1034,14 @@
         const file = document.getElementById("file").files[0];
 
         if (!ownerType || !ownerName || !documentType || !date || !email) {
-          return alert("Please complete all required fields.");
+          alert("Please complete all required fields.");
+          return;
         }
 
         if (isDriver()) {
           if (!(ownerType === "Driver" && ownerName === currentUserProfile.name)) {
-            return alert("Drivers can only save or edit their own documents.");
+            alert("Drivers can only save or edit their own documents.");
+            return;
           }
         }
 
@@ -1015,6 +1051,7 @@
         }
 
         let imageUrl = existingImageUrl;
+
         if (file) {
           const storageRef = ref(storage, "documents/" + Date.now() + "-" + file.name);
           await uploadBytes(storageRef, file);
@@ -1033,7 +1070,12 @@
 
         if (editingDocumentId) {
           const item = documents.find(d => d.id === editingDocumentId);
-          if (!canEditDocument(item)) return alert("You are not allowed to edit this document.");
+
+          if (!canEditDocument(item)) {
+            alert("You are not allowed to edit this document.");
+            return;
+          }
+
           await updateDoc(doc(db, "documents", editingDocumentId), payload);
           alert("Document updated.");
         } else {
@@ -1070,6 +1112,7 @@
       if (ownerType === "Truck") selectedTruck = ownerName;
       if (ownerType === "Trailer") selectedTrailer = ownerName;
       if (ownerType === "Company") selectedCompany = ownerName;
+
       renderOwnerDocs();
     };
 
@@ -1086,8 +1129,11 @@
       ];
 
       managerOnlyIds.forEach(id => {
-        if (isManager()) document.getElementById(id).classList.remove("hidden");
-        else document.getElementById(id).classList.add("hidden");
+        if (isManager()) {
+          document.getElementById(id).classList.remove("hidden");
+        } else {
+          document.getElementById(id).classList.add("hidden");
+        }
       });
     }
 
@@ -1099,6 +1145,7 @@
       await loadCompanies();
       await loadDocumentTypes();
       await loadDocuments();
+
       updateRoleUI();
       resetForm();
       showTab("addDocTab");
@@ -1116,9 +1163,11 @@
 
         document.getElementById("authArea").classList.add("hidden");
         document.getElementById("appArea").classList.remove("hidden");
+
         await initAppData();
       } else {
         currentUserProfile = null;
+
         document.getElementById("authArea").classList.remove("hidden");
         document.getElementById("appArea").classList.add("hidden");
       }
