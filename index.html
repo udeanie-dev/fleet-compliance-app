@@ -89,6 +89,10 @@
       background: #b02a37;
     }
 
+    .warning-btn {
+      background: #d97706;
+    }
+
     .tabs {
       display: flex;
       flex-wrap: wrap;
@@ -207,6 +211,10 @@
       margin-bottom: 16px;
     }
 
+    .inactive {
+      opacity: 0.6;
+    }
+
     @media (max-width: 800px) {
       .actions {
         flex-direction: column;
@@ -259,6 +267,7 @@
       <div class="tabs">
         <button onclick="showTab('addDocTab')">Add / Edit Document</button>
         <button onclick="showTab('masterTab')">Master Lists</button>
+        <button onclick="showTab('usersTab')" id="usersTabButton" class="hidden">Users</button>
         <button onclick="showTab('driversTab')">Drivers</button>
         <button onclick="showTab('trucksTab')">Trucks</button>
         <button onclick="showTab('trailersTab')">Trailers</button>
@@ -322,6 +331,14 @@
             <button id="saveBtn" onclick="saveDocument()">Save Document</button>
             <button id="cancelEditBtn" class="secondary-btn hidden" onclick="cancelEdit()">Cancel Edit</button>
           </div>
+        </div>
+      </div>
+
+      <div id="usersTab" class="tab-section">
+        <div class="card">
+          <h2>Users</h2>
+          <p class="small">Disable or delete user logins. Documents stay in the system.</p>
+          <div id="usersList"></div>
         </div>
       </div>
 
@@ -461,6 +478,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
   import {
     getAuth,
     signInWithEmailAndPassword,
@@ -507,6 +525,7 @@
   const functions = getFunctions(app, "us-central1");
 
   let currentUserProfile = null;
+  let users = [];
   let drivers = [];
   let trucks = [];
   let trailers = [];
@@ -582,6 +601,53 @@
         });
       }
     }
+  }
+
+  async function loadUsers() {
+    users = await loadCollection("users");
+    users.sort((a, b) => (a.fullName || a.name || "").localeCompare(b.fullName || b.name || ""));
+    renderUsers();
+  }
+
+  function renderUsers() {
+    const box = document.getElementById("usersList");
+
+    if (!users.length) {
+      box.innerHTML = `<div class="small">No users found.</div>`;
+      return;
+    }
+
+    box.innerHTML = users.map(user => {
+      const isSelf = auth.currentUser && user.id === auth.currentUser.uid;
+      const active = user.active !== false && user.deleted !== true;
+
+      return `
+        <div class="list-item ${active ? "" : "inactive"}">
+          <div class="doc-title">
+            ${user.fullName || user.name || "Unnamed User"}
+          </div>
+
+          <div class="small">
+            <span class="pill">Role: ${user.role || ""}</span>
+            <span class="pill">Email: ${user.email || ""}</span>
+            <span class="pill">Status: ${active ? "Active" : "Disabled / Deleted"}</span>
+          </div>
+
+          ${isSelf ? `<div class="small">You cannot disable or delete your own account.</div>` : ""}
+
+          ${isManager() && !isSelf && user.deleted !== true ? `
+            <div class="actions">
+              <button class="${active ? "warning-btn" : "secondary-btn"}" onclick="toggleUserActive('${user.id}', ${active ? "false" : "true"})">
+                ${active ? "Disable" : "Enable"}
+              </button>
+              <button class="danger-btn" onclick="deleteUserLogin('${user.id}')">
+                Delete Login
+              </button>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }).join("");
   }
 
   async function loadDrivers() {
@@ -850,10 +916,52 @@
       document.getElementById("newDriverEmail").value = "";
       document.getElementById("newDriverPassword").value = "";
 
+      await loadUsers();
       await loadDrivers();
     } catch (error) {
       console.error(error);
       alert(`Driver creation failed: ${error.message}`);
+    }
+  };
+
+  window.toggleUserActive = async function (uid, active) {
+    try {
+      if (!isManager()) {
+        alert("Only managers can change user status.");
+        return;
+      }
+
+      const action = active ? "enable" : "disable";
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+      const setUserActive = httpsCallable(functions, "setUserActive");
+      await setUserActive({ uid, active });
+
+      await loadUsers();
+      alert(`User ${active ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      console.error(error);
+      alert(`User update failed: ${error.message}`);
+    }
+  };
+
+  window.deleteUserLogin = async function (uid) {
+    try {
+      if (!isManager()) {
+        alert("Only managers can delete users.");
+        return;
+      }
+
+      if (!confirm("Delete this user's login? Their documents will stay in the system.")) return;
+
+      const deleteAppUser = httpsCallable(functions, "deleteAppUser");
+      await deleteAppUser({ uid });
+
+      await loadUsers();
+      alert("User login deleted. Documents were kept.");
+    } catch (error) {
+      console.error(error);
+      alert(`Delete failed: ${error.message}`);
     }
   };
 
@@ -1094,13 +1202,16 @@
 
     if (isManager()) {
       document.getElementById("addDriverLoginBox").classList.remove("hidden");
+      document.getElementById("usersTabButton").classList.remove("hidden");
     } else {
       document.getElementById("addDriverLoginBox").classList.add("hidden");
+      document.getElementById("usersTabButton").classList.add("hidden");
     }
   }
 
   async function initAppData() {
     await seedDefaultTrucks();
+    await loadUsers();
     await loadDrivers();
     await loadTrucks();
     await loadTrailers();
@@ -1117,7 +1228,7 @@
     if (user) {
       currentUserProfile = await loadUsersProfile(user.uid);
 
-      if (!currentUserProfile || currentUserProfile.active === false) {
+      if (!currentUserProfile || currentUserProfile.active === false || currentUserProfile.deleted === true) {
         alert("No active user profile found. Please contact admin.");
         await signOut(auth);
         return;
