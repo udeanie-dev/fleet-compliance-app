@@ -404,21 +404,6 @@
       <div id="driversTab" class="tab-section">
         <div class="card">
           <div class="card-title">Drivers</div>
-          <div id="addDriverLoginBox" class="hidden">
-            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:20px;">
-              <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Create Driver Login</div>
-              <div class="form-grid">
-                <div class="form-group"><label for="newDriverName">First Name</label><input id="newDriverName" type="text" placeholder="Andile"></div>
-                <div class="form-group"><label for="newDriverSurname">Surname</label><input id="newDriverSurname" type="text" placeholder="Makinana"></div>
-                <div class="form-group"><label for="newDriverEmail">Email</label><input id="newDriverEmail" type="email" placeholder="driver@company.co.za"></div>
-                <div class="form-group"><label for="newDriverPassword">Temporary Password</label><input id="newDriverPassword" type="password" placeholder="Min 6 characters"></div>
-              </div>
-              <div class="btn-actions">
-                <button class="btn btn-primary" onclick="createDriver()">Create Driver Login</button>
-              </div>
-              <div id="createdDriverBox" style="margin-top:10px;font-size:13px;color:var(--success);"></div>
-            </div>
-          </div>
           <div class="browse-grid">
             <div><h3 style="font-size:14px;font-weight:600;margin-bottom:10px;">Driver List</h3><div id="driversBrowse"></div></div>
             <div><h3 style="font-size:14px;font-weight:600;margin-bottom:10px;">Documents</h3><div id="driverDocsView"><div class="empty-state">Select a driver to view their documents.</div></div></div>
@@ -503,6 +488,43 @@
       <!-- Users Tab -->
       <div id="usersTab" class="tab-section">
         <div class="card">
+          <div class="card-title">Create User</div>
+          <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Managers can create logins for drivers, controllers, managers, repair and maintenance, or other staff members here.</p>
+
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:20px;">
+            <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Add Staff Member</div>
+            <div class="form-grid">
+              <div class="form-group"><label for="newUserName">First Name</label><input id="newUserName" type="text" placeholder="Andile"></div>
+              <div class="form-group"><label for="newUserSurname">Surname</label><input id="newUserSurname" type="text" placeholder="Makinana"></div>
+              <div class="form-group"><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="person@company.co.za"></div>
+              <div class="form-group"><label for="newUserPassword">Temporary Password</label><input id="newUserPassword" type="password" placeholder="Min 6 characters"></div>
+              <div class="form-group">
+                <label for="newUserRole">System Role</label>
+                <select id="newUserRole">
+                  <option value="">Select role</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Controller">Controller</option>
+                  <option value="Manager">Manager</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="newUserCapacity">Capacity / Department</label>
+                <select id="newUserCapacity">
+                  <option value="">Select capacity</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Controller">Controller</option>
+                  <option value="Repair and Maintenance">Repair and Maintenance</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group"><label for="newUserCustomCapacity">Other Capacity</label><input id="newUserCustomCapacity" type="text" placeholder="Example: Workshop Supervisor"></div>
+            </div>
+            <div class="btn-actions"><button class="btn btn-primary" onclick="createUser()">Create User Login</button></div>
+            <div id="createdUserBox" style="margin-top:10px;font-size:13px;color:var(--success);"></div>
+          </div>
+
+          <div class="divider"></div>
           <div class="card-title">User Management</div>
           <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Disable or remove user logins. Documents are preserved when a login is deleted.</p>
           <div id="usersList"></div>
@@ -705,7 +727,7 @@ function renderUsers() {
     return `<div class="user-row ${active ? "" : "inactive-row"}">
       <div class="user-info">
         <div class="name">${user.fullName || `${user.name || ""} ${user.surname || ""}`.trim() || user.email || "Unnamed"} <span class="badge ${roleBadge}">${user.role || ""}</span> <span class="badge ${active ? "badge-active" : "badge-disabled"}">${active ? "Active" : "Disabled"}</span></div>
-        <div class="meta">${user.email || ""}${isSelf ? " · (you)" : ""}</div>
+        <div class="meta">${user.email || ""}${user.capacity ? " · " + user.capacity : ""}${isSelf ? " · (you)" : ""}</div>
       </div>
       ${isManager() && !isSelf && user.deleted !== true ? `<div class="row-actions">
         <button class="btn btn-sm btn-warning" onclick="toggleUserActive('${user.id}',${active ? "false" : "true"})">${active ? "Disable" : "Enable"}</button>
@@ -1168,28 +1190,43 @@ window.removeMasterItem = async function(collectionName, id) {
 };
 
 // ── User management ────────────────────────────────────
-window.createDriver = async function() {
-  if (!isManager()) { toast("Only managers can create drivers.", "error"); return; }
-  const name = document.getElementById("newDriverName").value.trim();
-  const surname = document.getElementById("newDriverSurname").value.trim();
-  const email = document.getElementById("newDriverEmail").value.trim();
-  const password = document.getElementById("newDriverPassword").value;
-  if (!name || !surname || !email || !password) { toast("Please complete all driver fields.", "error"); return; }
+window.createUser = async function() {
+  if (!isManager()) { toast("Only managers can create users.", "error"); return; }
+
+  const name = document.getElementById("newUserName").value.trim();
+  const surname = document.getElementById("newUserSurname").value.trim();
+  const email = document.getElementById("newUserEmail").value.trim();
+  const password = document.getElementById("newUserPassword").value;
+  const role = document.getElementById("newUserRole").value;
+  const selectedCapacity = document.getElementById("newUserCapacity").value;
+  const customCapacity = document.getElementById("newUserCustomCapacity").value.trim();
+  const capacity = customCapacity || selectedCapacity;
+
+  if (!name || !surname || !email || !password || !role || !capacity) {
+    toast("Please complete all user fields.", "error");
+    return;
+  }
   if (!validateEmail(email)) { toast("Please enter a valid email address.", "error"); return; }
   if (password.length < 6) { toast("Password must be at least 6 characters.", "error"); return; }
 
-  showLoading("Creating driver login…");
+  showLoading("Creating user login…");
   try {
-    const createDriverUser = httpsCallable(functions, "createDriverUser");
-    const result = await createDriverUser({ name, surname, email, password });
-    document.getElementById("createdDriverBox").innerHTML = `✅ Driver login created for <strong>${result.data.fullName}</strong> (${result.data.email}). Please share their password securely — it is not stored here.`;
-    ["newDriverName", "newDriverSurname", "newDriverEmail", "newDriverPassword"].forEach(id => document.getElementById(id).value = "");
+    const createAppUser = httpsCallable(functions, "createAppUser");
+    const result = await createAppUser({ name, surname, email, password, role, capacity });
+
+    document.getElementById("createdUserBox").innerHTML = `✅ Login created for <strong>${result.data.fullName}</strong> (${result.data.email}). Role: <strong>${result.data.role}</strong>. Capacity: <strong>${result.data.capacity}</strong>.`;
+
+    ["newUserName", "newUserSurname", "newUserEmail", "newUserPassword", "newUserRole", "newUserCapacity", "newUserCustomCapacity"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+
     await loadUsers();
     await loadDrivers();
-    toast("Driver login created.", "success");
+    toast("User login created.", "success");
   } catch (err) {
     console.error(err);
-    toast(`Driver creation failed: ${err.message}`, "error");
+    toast(`User creation failed: ${err.message}`, "error");
   } finally { hideLoading(); }
 };
 
@@ -1230,8 +1267,6 @@ function updateRoleUI() {
     if (el) el.classList.toggle("hidden", !isManager());
   });
 
-  const addDriverBox = document.getElementById("addDriverLoginBox");
-  if (addDriverBox) addDriverBox.classList.toggle("hidden", !isManager());
   const usersNavBtn = document.getElementById("usersNavBtn");
   if (usersNavBtn) usersNavBtn.classList.toggle("hidden", !isManager());
 }
