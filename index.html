@@ -202,7 +202,6 @@ let editingDocumentId=null,existingImageUrl="",selectedDriver="",selectedTruck="
 function isManager(){return currentUserProfile?.role==="Manager"}
 function isDriver(){return currentUserProfile?.role==="Driver"}
 function sortByField(arr,field){return arr.sort((a,b)=>(a[field]||"").localeCompare(b[field]||""))}
-
 function normalizeEmail(email){return (email||"").trim().toLowerCase()}
 
 function getProfileName(){
@@ -222,29 +221,31 @@ async function loadUsersProfile(authUser){
   if (uidSnap.exists()) {
     const data = { id: uidSnap.id, ...uidSnap.data() };
     const profileEmail = normalizeEmail(data.email);
-
-    if (!profileEmail || profileEmail === email) {
-      return data;
-    }
+    if (!profileEmail || profileEmail === email) return data;
   }
 
-  const q = query(collection(db, "users"), where("email", "==", authUser.email));
-  const snap = await getDocs(q);
-
-  if (!snap.empty) {
-    const d = snap.docs[0];
+  const q1 = query(collection(db, "users"), where("email", "==", authUser.email));
+  const snap1 = await getDocs(q1);
+  if (!snap1.empty) {
+    const d = snap1.docs[0];
     return { id: d.id, ...d.data() };
   }
 
-  const qLower = query(collection(db, "users"), where("email", "==", email));
-  const snapLower = await getDocs(qLower);
-
-  if (!snapLower.empty) {
-    const d = snapLower.docs[0];
+  const q2 = query(collection(db, "users"), where("email", "==", email));
+  const snap2 = await getDocs(q2);
+  if (!snap2.empty) {
+    const d = snap2.docs[0];
     return { id: d.id, ...d.data() };
   }
 
-  return null;
+  return {
+    id: uid,
+    email: authUser.email,
+    fullName: authUser.displayName || authUser.email,
+    role: "Driver",
+    active: true,
+    temporaryFallback: true
+  };
 }
 
 function getStatusInfo(dateString){
@@ -259,12 +260,22 @@ function getStatusInfo(dateString){
   return{text:"✅ VALID",color:"green",diffDays};
 }
 
-function showTab(tabId){document.querySelectorAll(".tab-section").forEach(el=>el.style.display="none");const tab=document.getElementById(tabId);if(tab)tab.style.display="block"}
+function showTab(tabId){
+  document.querySelectorAll(".tab-section").forEach(el=>el.style.display="none");
+  const tab=document.getElementById(tabId);
+  if(tab)tab.style.display="block";
+}
 window.showTab=showTab;
 
-async function loadCollection(name){const snap=await getDocs(collection(db,name));const items=[];snap.forEach(d=>items.push({id:d.id,...d.data()}));return items}
+async function loadCollection(name){
+  const snap=await getDocs(collection(db,name));
+  const items=[];
+  snap.forEach(d=>items.push({id:d.id,...d.data()}));
+  return items;
+}
 
 async function seedDefaultTrucks(){
+  if(!isManager()) return;
   const existing=await loadCollection("trucks");
   const existingSet=new Set(existing.map(x=>(x.fleetNumber||"").toLowerCase()));
   for(let i=19;i<=40;i++){
@@ -275,14 +286,30 @@ async function seedDefaultTrucks(){
   }
 }
 
-async function loadUsers(){users=await loadCollection("users");users.sort((a,b)=>(a.fullName||a.name||"").localeCompare(b.fullName||b.name||""));renderUsers()}
+async function loadUsers(){
+  if(!isManager()){
+    users=[];
+    return;
+  }
+
+  users=await loadCollection("users");
+  users.sort((a,b)=>(a.fullName||a.name||"").localeCompare(b.fullName||b.name||""));
+  renderUsers();
+}
 
 function renderUsers(){
   const box=document.getElementById("usersList");
-  if(!users.length){box.innerHTML=`<div class="small">No users found.</div>`;return}
+  if(!box) return;
+
+  if(!users.length){
+    box.innerHTML=`<div class="small">No users found.</div>`;
+    return;
+  }
+
   box.innerHTML=users.map(user=>{
     const isSelf=auth.currentUser && normalizeEmail(user.email)===normalizeEmail(auth.currentUser.email);
     const active=user.active!==false&&user.deleted!==true;
+
     return `<div class="list-item ${active?"":"inactive"}">
       <div class="doc-title">${user.fullName||`${user.name||""} ${user.surname||""}`.trim()||user.email||"Unnamed User"}</div>
       <div class="small"><span class="pill">Role: ${user.role||""}</span><span class="pill">Email: ${user.email||""}</span><span class="pill">Status: ${active?"Active":"Disabled / Deleted"}</span></div>
@@ -292,7 +319,21 @@ function renderUsers(){
   }).join("");
 }
 
-async function loadDrivers(){drivers=await loadCollection("drivers");sortByField(drivers,"name");renderMasterList("driversList",drivers,"name","drivers");renderBrowseList("driversBrowse",drivers,"name","Driver");renderSelect("driverSelect",drivers.map(x=>x.name),"Select Driver")}
+async function loadDrivers(){
+  drivers=await loadCollection("drivers");
+  sortByField(drivers,"name");
+  renderMasterList("driversList",drivers,"name","drivers");
+  renderBrowseList("driversBrowse",drivers,"name","Driver");
+  renderSelect("driverSelect",drivers.map(x=>x.name),"Select Driver");
+
+  if(isDriver()){
+    const myName=getProfileName();
+    const driverSelect=document.getElementById("driverSelect");
+    const found=drivers.find(d=>d.name===myName);
+    if(found) driverSelect.value=myName;
+  }
+}
+
 async function loadTrucks(){trucks=await loadCollection("trucks");sortByField(trucks,"fleetNumber");renderMasterList("trucksList",trucks,"fleetNumber","trucks");renderBrowseList("trucksBrowse",trucks,"fleetNumber","Truck");renderSelect("truckSelect",trucks.map(x=>x.fleetNumber),"Select Truck")}
 async function loadTrailers(){trailers=await loadCollection("trailers");sortByField(trailers,"trailerNumber");renderMasterList("trailersList",trailers,"trailerNumber","trailers");renderBrowseList("trailersBrowse",trailers,"trailerNumber","Trailer");renderSelect("trailerSelect",trailers.map(x=>x.trailerNumber),"Select Trailer")}
 async function loadCompanies(){companies=await loadCollection("companies");sortByField(companies,"name");renderMasterList("companiesList",companies,"name","companies");renderBrowseList("companiesBrowse",companies,"name","Company");renderSelect("companySelect",companies.map(x=>x.name),"Select Company")}
@@ -307,157 +348,351 @@ function renderDashboard(){
   document.getElementById("stat30").innerText=documents.filter(d=>{const n=getStatusInfo(d.date).diffDays;return n>7&&n<=30}).length;
 }
 
-function renderSelect(id,values,placeholder){const el=document.getElementById(id);el.innerHTML=`<option value="">${placeholder}</option>`;values.forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`)}
+function renderSelect(id,values,placeholder){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML=`<option value="">${placeholder}</option>`;
+  values.forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`);
+}
 
 function renderMasterList(elementId,items,field,collectionName){
   const box=document.getElementById(elementId);
-  if(!items.length){box.innerHTML=`<div class="small">No records yet.</div>`;return}
+  if(!box) return;
+
+  if(!items.length){
+    box.innerHTML=`<div class="small">No records yet.</div>`;
+    return;
+  }
+
   box.innerHTML=items.map(item=>`<div class="list-item">${item[field]}${isManager()&&collectionName!=="drivers"?`<div class="actions"><button class="danger-btn" onclick="removeMasterItem('${collectionName}','${item.id}')">Remove</button></div>`:""}</div>`).join("");
 }
 
 function renderBrowseList(elementId,items,field,ownerType){
   const box=document.getElementById(elementId);
-  if(!items.length){box.innerHTML=`<div class="small">No records yet.</div>`;return}
+  if(!box) return;
+
+  if(!items.length){
+    box.innerHTML=`<div class="small">No records yet.</div>`;
+    return;
+  }
+
   box.innerHTML=items.map(item=>`<div class="click-item" onclick="selectOwnerDocs('${ownerType}','${item[field]}')">${item[field]}</div>`).join("");
 }
 
-function renderOwnerDocs(){renderFilteredDocs("driverDocsView","Driver",selectedDriver);renderFilteredDocs("truckDocsView","Truck",selectedTruck);renderFilteredDocs("trailerDocsView","Trailer",selectedTrailer);renderFilteredDocs("companyDocsView","Company",selectedCompany)}
+function renderOwnerDocs(){
+  renderFilteredDocs("driverDocsView","Driver",selectedDriver);
+  renderFilteredDocs("truckDocsView","Truck",selectedTruck);
+  renderFilteredDocs("trailerDocsView","Trailer",selectedTrailer);
+  renderFilteredDocs("companyDocsView","Company",selectedCompany);
+}
 
 function renderFilteredDocs(elementId,ownerType,ownerName){
   const box=document.getElementById(elementId);
-  if(!ownerName){box.innerHTML=`<div class="small">Select a ${ownerType.toLowerCase()} to view documents.</div>`;return}
+  if(!box) return;
+
+  if(!ownerName){
+    box.innerHTML=`<div class="small">Select a ${ownerType.toLowerCase()} to view documents.</div>`;
+    return;
+  }
+
   const filtered=documents.filter(d=>d.ownerType===ownerType&&d.ownerName===ownerName);
-  if(!filtered.length){box.innerHTML=`<div class="small">No documents for ${ownerName}.</div>`;return}
+
+  if(!filtered.length){
+    box.innerHTML=`<div class="small">No documents for ${ownerName}.</div>`;
+    return;
+  }
+
   box.innerHTML=filtered.map(item=>renderDocCard(item)).join("");
 }
 
 function renderAllDocuments(){
   const box=document.getElementById("allDocumentsView");
+  if(!box) return;
+
   let items=[...documents];
-  items.sort((a,b)=>{const da=new Date(a.date).getTime();const dbt=new Date(b.date).getTime();return document.getElementById("sortOrder").value==="asc"?da-dbt:dbt-da});
-  if(!items.length){box.innerHTML=`<div class="small">No documents saved yet.</div>`;return}
+
+  items.sort((a,b)=>{
+    const da=new Date(a.date).getTime();
+    const dbt=new Date(b.date).getTime();
+    return document.getElementById("sortOrder").value==="asc"?da-dbt:dbt-da;
+  });
+
+  if(!items.length){
+    box.innerHTML=`<div class="small">No documents saved yet.</div>`;
+    return;
+  }
+
   box.innerHTML=items.map(item=>renderDocCard(item)).join("");
 }
 window.renderAllDocuments=renderAllDocuments;
 
-function canEditDocument(item){if(isManager())return true;if(currentUserProfile?.role==="Controller")return true;if(isDriver())return item.ownerType==="Driver"&&item.ownerName===getProfileName();return false}
+function canEditDocument(item){
+  if(isManager()) return true;
+  if(currentUserProfile?.role==="Controller") return true;
+  if(isDriver()) return item.ownerType==="Driver" && item.ownerName===getProfileName();
+  return false;
+}
 
 function renderDocCard(item){
   const status=getStatusInfo(item.date);
-  return `<div class="list-item"><div class="doc-title" style="color:${status.color}">[${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})</div><div class="small"><span class="pill">Expiry: ${item.date}</span><span class="pill">Owner Type: ${item.ownerType}</span></div><div class="small">Reminder Email: ${item.email||""}</div>${item.imageUrl?`<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>`:""}${canEditDocument(item)?`<div class="actions"><button onclick="editDocument('${item.id}')">Edit</button></div>`:""}</div>`;
+  return `<div class="list-item">
+    <div class="doc-title" style="color:${status.color}">[${item.ownerType}] ${item.ownerName} - ${item.documentType} (${status.text})</div>
+    <div class="small"><span class="pill">Expiry: ${item.date}</span><span class="pill">Owner Type: ${item.ownerType}</span></div>
+    <div class="small">Reminder Email: ${item.email||""}</div>
+    ${item.imageUrl?`<div><a href="${item.imageUrl}" target="_blank">View Document</a></div>`:""}
+    ${canEditDocument(item)?`<div class="actions"><button onclick="editDocument('${item.id}')">Edit</button></div>`:""}
+  </div>`;
 }
 
-function hideAllOwnerBlocks(){["driverBlock","truckBlock","trailerBlock","companyBlock"].forEach(id=>document.getElementById(id).classList.add("hidden"))}
+function hideAllOwnerBlocks(){
+  ["driverBlock","truckBlock","trailerBlock","companyBlock"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+}
 
 window.updateOwnerDropdown=function(){
   const ownerType=document.getElementById("ownerType").value;
   hideAllOwnerBlocks();
-  if(ownerType==="Driver")document.getElementById("driverBlock").classList.remove("hidden");
-  if(ownerType==="Truck")document.getElementById("truckBlock").classList.remove("hidden");
-  if(ownerType==="Trailer")document.getElementById("trailerBlock").classList.remove("hidden");
-  if(ownerType==="Company")document.getElementById("companyBlock").classList.remove("hidden");
+
+  if(ownerType==="Driver") document.getElementById("driverBlock").classList.remove("hidden");
+  if(ownerType==="Truck") document.getElementById("truckBlock").classList.remove("hidden");
+  if(ownerType==="Trailer") document.getElementById("trailerBlock").classList.remove("hidden");
+  if(ownerType==="Company") document.getElementById("companyBlock").classList.remove("hidden");
+
+  if(isDriver() && ownerType==="Driver"){
+    const myName=getProfileName();
+    document.getElementById("driverSelect").value=myName;
+  }
 }
 
 function getOwnerNameByType(ownerType){
-  if(ownerType==="Driver")return document.getElementById("driverSelect").value;
-  if(ownerType==="Truck")return document.getElementById("truckSelect").value;
-  if(ownerType==="Trailer")return document.getElementById("trailerSelect").value;
-  if(ownerType==="Company")return document.getElementById("companySelect").value;
-  return"";
+  if(ownerType==="Driver") return document.getElementById("driverSelect").value;
+  if(ownerType==="Truck") return document.getElementById("truckSelect").value;
+  if(ownerType==="Trailer") return document.getElementById("trailerSelect").value;
+  if(ownerType==="Company") return document.getElementById("companySelect").value;
+  return "";
 }
 
 async function addIfNotExists(collectionName,fieldName,value,existingItems,existingField){
-  const trimmed=value.trim();if(!trimmed)return{added:false,exists:false};
+  const trimmed=value.trim();
+  if(!trimmed) return {added:false,exists:false};
+
   const exists=existingItems.some(item=>(item[existingField]||"").toLowerCase()===trimmed.toLowerCase());
-  if(exists)return{added:false,exists:true};
+  if(exists) return {added:false,exists:true};
+
   await addDoc(collection(db,collectionName),{[fieldName]:trimmed,created:new Date().toISOString()});
-  return{added:true,exists:false};
+  return {added:true,exists:false};
 }
 
 window.loginUser=async function(){
   try{
     const email=document.getElementById("loginEmail").value.trim();
     const password=document.getElementById("loginPassword").value;
-    if(!email||!password){alert("Please enter email and password.");return}
+
+    if(!email||!password){
+      alert("Please enter email and password.");
+      return;
+    }
+
     await signInWithEmailAndPassword(auth,email,password);
-  }catch(error){console.error(error);alert(`Login failed: ${error.message}`)}
+  }catch(error){
+    console.error(error);
+    alert(`Login failed: ${error.message}`);
+  }
 }
 
 window.logoutUser=async function(){await signOut(auth)}
 
 window.createDriver=async function(){
   try{
-    if(!isManager()){alert("Only managers can create drivers.");return}
+    if(!isManager()){
+      alert("Only managers can create drivers.");
+      return;
+    }
+
     const name=document.getElementById("newDriverName").value.trim();
     const surname=document.getElementById("newDriverSurname").value.trim();
     const email=document.getElementById("newDriverEmail").value.trim();
     const password=document.getElementById("newDriverPassword").value;
-    if(!name||!surname||!email||!password){alert("Please complete all driver fields.");return}
+
+    if(!name||!surname||!email||!password){
+      alert("Please complete all driver fields.");
+      return;
+    }
+
     const createDriverUser=httpsCallable(functions,"createDriverUser");
     const result=await createDriverUser({name,surname,email,password});
+
     document.getElementById("createdDriverBox").innerHTML=`<strong>Driver created.</strong><br>Name: <strong>${result.data.fullName}</strong><br>Email login: <strong>${result.data.email}</strong><br>Password: <strong>${password}</strong>`;
+
     ["newDriverName","newDriverSurname","newDriverEmail","newDriverPassword"].forEach(id=>document.getElementById(id).value="");
-    await loadUsers();await loadDrivers();
-  }catch(error){console.error(error);alert(`Driver creation failed: ${error.message}`)}
+
+    await loadUsers();
+    await loadDrivers();
+  }catch(error){
+    console.error(error);
+    alert(`Driver creation failed: ${error.message}`);
+  }
 }
 
 window.toggleUserActive=async function(uid,active){
   try{
-    if(!isManager()){alert("Only managers can change user status.");return}
-    if(!confirm(`Are you sure you want to ${active?"enable":"disable"} this user?`))return;
+    if(!isManager()){
+      alert("Only managers can change user status.");
+      return;
+    }
+
+    if(!confirm(`Are you sure you want to ${active?"enable":"disable"} this user?`)) return;
+
     const setUserActive=httpsCallable(functions,"setUserActive");
     await setUserActive({uid,active});
+
     await loadUsers();
     alert(`User ${active?"enabled":"disabled"}.`);
-  }catch(error){console.error(error);alert(`User update failed: ${error.message}`)}
+  }catch(error){
+    console.error(error);
+    alert(`User update failed: ${error.message}`);
+  }
 }
 
 window.deleteUserLogin=async function(uid){
   try{
-    if(!isManager()){alert("Only managers can delete users.");return}
-    if(!confirm("Delete this user's login? Their documents will stay in the system."))return;
+    if(!isManager()){
+      alert("Only managers can delete users.");
+      return;
+    }
+
+    if(!confirm("Delete this user's login? Their documents will stay in the system.")) return;
+
     const deleteAppUser=httpsCallable(functions,"deleteAppUser");
     await deleteAppUser({uid});
+
     await loadUsers();
     alert("User login deleted. Documents were kept.");
-  }catch(error){console.error(error);alert(`Delete failed: ${error.message}`)}
+  }catch(error){
+    console.error(error);
+    alert(`Delete failed: ${error.message}`);
+  }
 }
 
-window.addTruck=async function(){if(!isManager())return alert("Only managers can add trucks.");const value=document.getElementById("newTruck").value.trim();if(!value)return alert("Please enter a truck number.");await addIfNotExists("trucks","fleetNumber",value,trucks,"fleetNumber");document.getElementById("newTruck").value="";await loadTrucks();alert("Truck saved.")}
-window.addTrailer=async function(){if(!isManager())return alert("Only managers can add trailers.");const value=document.getElementById("newTrailer").value.trim();if(!value)return alert("Please enter a trailer number.");await addIfNotExists("trailers","trailerNumber",value,trailers,"trailerNumber");document.getElementById("newTrailer").value="";await loadTrailers();alert("Trailer saved.")}
-window.addCompany=async function(){if(!isManager())return alert("Only managers can add companies.");const value=document.getElementById("newCompany").value.trim();if(!value)return alert("Please enter a company name.");await addIfNotExists("companies","name",value,companies,"name");document.getElementById("newCompany").value="";await loadCompanies();alert("Company saved.")}
-window.addDocumentType=async function(){if(!isManager()&&currentUserProfile?.role!=="Controller")return alert("Not allowed.");const value=document.getElementById("newDocType").value.trim();if(!value)return alert("Please enter a document type.");await addIfNotExists("documentTypes","name",value,documentTypes,"name");document.getElementById("newDocType").value="";await loadDocumentTypes();alert("Document type saved.")}
-window.removeMasterItem=async function(collectionName,id){if(!isManager())return alert("Only managers can remove master records.");if(!confirm("Remove this item?"))return;await deleteDoc(doc(db,collectionName,id));if(collectionName==="trucks")await loadTrucks();if(collectionName==="trailers")await loadTrailers();if(collectionName==="companies")await loadCompanies();if(collectionName==="documentTypes")await loadDocumentTypes()}
+window.addTruck=async function(){
+  if(!isManager()) return alert("Only managers can add trucks.");
+
+  const value=document.getElementById("newTruck").value.trim();
+
+  if(!value) return alert("Please enter a truck number.");
+
+  await addIfNotExists("trucks","fleetNumber",value,trucks,"fleetNumber");
+  document.getElementById("newTruck").value="";
+  await loadTrucks();
+  alert("Truck saved.");
+}
+
+window.addTrailer=async function(){
+  if(!isManager()) return alert("Only managers can add trailers.");
+
+  const value=document.getElementById("newTrailer").value.trim();
+
+  if(!value) return alert("Please enter a trailer number.");
+
+  await addIfNotExists("trailers","trailerNumber",value,trailers,"trailerNumber");
+  document.getElementById("newTrailer").value="";
+  await loadTrailers();
+  alert("Trailer saved.");
+}
+
+window.addCompany=async function(){
+  if(!isManager()) return alert("Only managers can add companies.");
+
+  const value=document.getElementById("newCompany").value.trim();
+
+  if(!value) return alert("Please enter a company name.");
+
+  await addIfNotExists("companies","name",value,companies,"name");
+  document.getElementById("newCompany").value="";
+  await loadCompanies();
+  alert("Company saved.");
+}
+
+window.addDocumentType=async function(){
+  if(!isManager()&&currentUserProfile?.role!=="Controller") return alert("Not allowed.");
+
+  const value=document.getElementById("newDocType").value.trim();
+
+  if(!value) return alert("Please enter a document type.");
+
+  await addIfNotExists("documentTypes","name",value,documentTypes,"name");
+  document.getElementById("newDocType").value="";
+  await loadDocumentTypes();
+  alert("Document type saved.");
+}
+
+window.removeMasterItem=async function(collectionName,id){
+  if(!isManager()) return alert("Only managers can remove master records.");
+
+  if(!confirm("Remove this item?")) return;
+
+  await deleteDoc(doc(db,collectionName,id));
+
+  if(collectionName==="trucks") await loadTrucks();
+  if(collectionName==="trailers") await loadTrailers();
+  if(collectionName==="companies") await loadCompanies();
+  if(collectionName==="documentTypes") await loadDocumentTypes();
+}
 
 function resetForm(){
-  editingDocumentId=null;existingImageUrl="";
+  editingDocumentId=null;
+  existingImageUrl="";
+
   document.getElementById("formTitle").innerText="Add / Edit Document";
   document.getElementById("editBanner").classList.add("hidden");
   document.getElementById("saveBtn").innerText="Save Document";
   document.getElementById("cancelEditBtn").classList.add("hidden");
+
   ["ownerType","driverSelect","truckSelect","trailerSelect","companySelect","docTypeSelect","customDocType","date","email","file"].forEach(id=>document.getElementById(id).value="");
+
   hideAllOwnerBlocks();
 }
 
 window.cancelEdit=function(){resetForm()}
 
 window.editDocument=function(id){
-  const item=documents.find(d=>d.id===id);if(!item)return;
-  if(!canEditDocument(item)){alert("You are not allowed to edit this document.");return}
-  editingDocumentId=id;existingImageUrl=item.imageUrl||"";
+  const item=documents.find(d=>d.id===id);
+
+  if(!item) return;
+
+  if(!canEditDocument(item)){
+    alert("You are not allowed to edit this document.");
+    return;
+  }
+
+  editingDocumentId=id;
+  existingImageUrl=item.imageUrl||"";
+
   document.getElementById("formTitle").innerText="Edit Document";
   document.getElementById("editBanner").classList.remove("hidden");
   document.getElementById("saveBtn").innerText="Update Document";
   document.getElementById("cancelEditBtn").classList.remove("hidden");
-  document.getElementById("ownerType").value=item.ownerType||"";updateOwnerDropdown();
-  if(item.ownerType==="Driver")document.getElementById("driverSelect").value=item.ownerName||"";
-  if(item.ownerType==="Truck")document.getElementById("truckSelect").value=item.ownerName||"";
-  if(item.ownerType==="Trailer")document.getElementById("trailerSelect").value=item.ownerName||"";
-  if(item.ownerType==="Company")document.getElementById("companySelect").value=item.ownerName||"";
+
+  document.getElementById("ownerType").value=item.ownerType||"";
+  updateOwnerDropdown();
+
+  if(item.ownerType==="Driver") document.getElementById("driverSelect").value=item.ownerName||"";
+  if(item.ownerType==="Truck") document.getElementById("truckSelect").value=item.ownerName||"";
+  if(item.ownerType==="Trailer") document.getElementById("trailerSelect").value=item.ownerName||"";
+  if(item.ownerType==="Company") document.getElementById("companySelect").value=item.ownerName||"";
+
   const existingType=documentTypes.find(t=>t.name===item.documentType);
-  if(existingType){document.getElementById("docTypeSelect").value=item.documentType;document.getElementById("customDocType").value=""}else{document.getElementById("docTypeSelect").value="";document.getElementById("customDocType").value=item.documentType||""}
+
+  if(existingType){
+    document.getElementById("docTypeSelect").value=item.documentType;
+    document.getElementById("customDocType").value="";
+  }else{
+    document.getElementById("docTypeSelect").value="";
+    document.getElementById("customDocType").value=item.documentType||"";
+  }
+
   document.getElementById("date").value=item.date||"";
   document.getElementById("email").value=item.email||"";
+
   showTab("addDocTab");
   window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -473,12 +708,23 @@ window.saveDocument=async function(){
     const email=document.getElementById("email").value.trim();
     const file=document.getElementById("file").files[0];
 
-    if(!ownerType||!ownerName||!documentType||!date||!email){alert("Please complete all required fields.");return}
-    if(isDriver()&&!(ownerType==="Driver"&&ownerName===getProfileName())){alert("Drivers can only save or edit their own documents.");return}
+    if(!ownerType||!ownerName||!documentType||!date||!email){
+      alert("Please complete all required fields.");
+      return;
+    }
 
-    if(customDocType){await addIfNotExists("documentTypes","name",customDocType,documentTypes,"name");await loadDocumentTypes()}
+    if(isDriver()&&!(ownerType==="Driver"&&ownerName===getProfileName())){
+      alert("Drivers can only save or edit their own documents.");
+      return;
+    }
+
+    if(customDocType){
+      await addIfNotExists("documentTypes","name",customDocType,documentTypes,"name");
+      await loadDocumentTypes();
+    }
 
     let imageUrl=existingImageUrl;
+
     if(file){
       const storageRef=ref(storage,"documents/"+Date.now()+"-"+file.name);
       await uploadBytes(storageRef,file);
@@ -489,25 +735,48 @@ window.saveDocument=async function(){
 
     if(editingDocumentId){
       const item=documents.find(d=>d.id===editingDocumentId);
-      if(!canEditDocument(item)){alert("You are not allowed to edit this document.");return}
+
+      if(!canEditDocument(item)){
+        alert("You are not allowed to edit this document.");
+        return;
+      }
+
       await updateDoc(doc(db,"documents",editingDocumentId),payload);
       alert("Document updated.");
     }else{
-      const newRef=await addDoc(collection(db,"documents"),{...payload,created:new Date().toISOString(),addedByUid:auth.currentUser.uid,addedByName:getProfileName()});
-      await addDoc(collection(db,"mail"),{to:email,message:{subject:`New document added: ${documentType}`,text:`${ownerName} has a new ${documentType} document saved with expiry date ${date}.`},created:new Date().toISOString(),sourceDocumentId:newRef.id});
+      const newRef=await addDoc(collection(db,"documents"),{
+        ...payload,
+        created:new Date().toISOString(),
+        addedByUid:auth.currentUser.uid,
+        addedByName:getProfileName()
+      });
+
+      await addDoc(collection(db,"mail"),{
+        to:email,
+        message:{
+          subject:`New document added: ${documentType}`,
+          text:`${ownerName} has a new ${documentType} document saved with expiry date ${date}.`
+        },
+        created:new Date().toISOString(),
+        sourceDocumentId:newRef.id
+      });
+
       alert("Document saved.");
     }
 
     await loadDocuments();
     resetForm();
-  }catch(error){console.error(error);alert(`Save failed: ${error.message}`)}
+  }catch(error){
+    console.error(error);
+    alert(`Save failed: ${error.message}`);
+  }
 }
 
 window.selectOwnerDocs=function(ownerType,ownerName){
-  if(ownerType==="Driver")selectedDriver=ownerName;
-  if(ownerType==="Truck")selectedTruck=ownerName;
-  if(ownerType==="Trailer")selectedTrailer=ownerName;
-  if(ownerType==="Company")selectedCompany=ownerName;
+  if(ownerType==="Driver") selectedDriver=ownerName;
+  if(ownerType==="Truck") selectedTruck=ownerName;
+  if(ownerType==="Trailer") selectedTrailer=ownerName;
+  if(ownerType==="Company") selectedCompany=ownerName;
   renderOwnerDocs();
 }
 
@@ -516,7 +785,7 @@ function updateRoleUI(){
   document.getElementById("roleText").innerText=`Role: ${currentUserProfile?.role||""} | Email: ${auth.currentUser?.email||""}`;
 
   ["managerTruckTools","managerTrailerTools","managerCompanyTools","managerDocTypeTools"].forEach(id=>{
-    if(isManager())document.getElementById(id).classList.remove("hidden");
+    if(isManager()) document.getElementById(id).classList.remove("hidden");
     else document.getElementById(id).classList.add("hidden");
   });
 
@@ -530,14 +799,20 @@ function updateRoleUI(){
 }
 
 async function initAppData(){
+  updateRoleUI();
+
   await seedDefaultTrucks();
-  await loadUsers();
   await loadDrivers();
   await loadTrucks();
   await loadTrailers();
   await loadCompanies();
   await loadDocumentTypes();
   await loadDocuments();
+
+  if(isManager()){
+    await loadUsers();
+  }
+
   updateRoleUI();
   resetForm();
   showTab("addDocTab");
@@ -561,6 +836,8 @@ onAuthStateChanged(auth,async(user)=>{
 
     document.getElementById("authArea").classList.add("hidden");
     document.getElementById("appArea").classList.remove("hidden");
+
+    updateRoleUI();
 
     await initAppData();
   }else{
