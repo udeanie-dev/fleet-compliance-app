@@ -80,7 +80,54 @@
       <button onclick="showTab('allDocsTab')">All Docs</button>
     </div>
 
-    <div id="addDocTab" class="tab-section">
+    <div id="allDocsTab" class="tab-section">
+  <div class="card">
+    <h2>All Documents</h2>
+
+    <div class="grid">
+      <div>
+        <label>Search</label>
+        <input id="searchInput" placeholder="Search driver, truck, document...">
+      </div>
+
+      <div>
+        <label>Filter by Status</label>
+        <select id="filterStatus">
+          <option value="all">All</option>
+          <option value="expired">Expired</option>
+          <option value="today">Due Today</option>
+          <option value="7days">Due in 7 Days</option>
+          <option value="30days">Due in 30 Days</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Owner Type</label>
+        <select id="filterOwner">
+          <option value="all">All</option>
+          <option value="Driver">Driver</option>
+          <option value="Truck">Truck</option>
+          <option value="Trailer">Trailer</option>
+          <option value="Company">Company</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Sort</label>
+        <select id="sortOrder">
+          <option value="asc">Expiry (Ascending)</option>
+          <option value="desc">Expiry (Descending)</option>
+        </select>
+      </div>
+    </div>
+
+    <br>
+
+    <button onclick="applyFilters()">Apply Filters</button>
+
+    <div id="allDocumentsView"></div>
+  </div>
+</div>
       <div class="card">
         <h2 id="formTitle">Add / Edit Document</h2>
         <div id="editBanner" class="edit-banner hidden">You are editing an existing document.</div>
