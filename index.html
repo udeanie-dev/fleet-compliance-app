@@ -59,7 +59,6 @@
     .header-brand { display: flex; align-items: center; gap: 10px; }
     .header-brand img { height: 32px; width: auto; display: block; }
     .header-brand .logo-text { font-size: 20px; font-weight: 600; color: #fff; letter-spacing: -.3px; }
-    .header-brand .logo-sub { font-size: 11px; color: rgba(255,255,255,.6); letter-spacing: .05em; }
     .header-right { display: flex; align-items: center; gap: 12px; }
     .user-chip { background: rgba(255,255,255,.15); border-radius: 99px; padding: 5px 14px 5px 8px; display: flex; align-items: center; gap: 8px; }
     .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; }
@@ -575,7 +574,7 @@
           <div class="divider"></div>
           <div class="card-title">User Management</div>
           <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Disable or remove user logins. Documents are preserved when a login is deleted.</p>
-          <div id="usersList"></div>
+          <div id="userManagementList"></div>
         </div>
       </div>
 
@@ -619,7 +618,6 @@ let currentUserProfile = null;
 let users = [], drivers = [], trucks = [], trailers = [], companies = [], documentTypes = [], documents = [];
 let editingDocumentId = null, existingImageUrl = "";
 let selectedDriver = "", selectedTruck = "", selectedTrailer = "", selectedCompany = "";
-let activeNavBtn = null;
 
 // ── Helpers ────────────────────────────────────────────
 const isManager = () => currentUserProfile?.role === "Manager";
@@ -648,6 +646,7 @@ function hideLoading() {
 
 function toast(msg, type = "default") {
   const wrap = document.getElementById("toast-wrap");
+  if (!wrap) return;
   const el = document.createElement("div");
   el.className = `toast ${type}`;
   el.textContent = msg;
@@ -687,7 +686,12 @@ window.showTab = function(tabId, btn) {
   const tab = document.getElementById(tabId);
   if (tab) tab.style.display = "block";
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  if (btn) btn.classList.add("active");
+  if (btn) {
+    btn.classList.add("active");
+  } else {
+    const matchedBtn = document.querySelector(`[onclick*="${tabId}"]`);
+    if (matchedBtn) matchedBtn.classList.add("active");
+  }
 };
 
 // ── Firestore helpers ──────────────────────────────────
@@ -765,7 +769,7 @@ async function loadUsers() {
 }
 
 function renderUsers() {
-  const box = document.getElementById("usersList");
+  const box = document.getElementById("userManagementList");
   if (!box) return;
   if (!users.length) { box.innerHTML = `<div class="empty-state">No users found.</div>`; return; }
   box.innerHTML = users.map(user => {
@@ -778,7 +782,7 @@ function renderUsers() {
         <div class="meta">${user.email || ""}${user.capacity ? " · " + user.capacity : ""}${isSelf ? " · (you)" : ""}</div>
       </div>
       ${isManager() && !isSelf && user.deleted !== true ? `<div class="row-actions">
-        <button class="btn btn-sm btn-warning" onclick="toggleUserActive('${user.id}',${active ? "false" : "true"})">${active ? "Disable" : "Enable"}</button>
+        <button class="btn btn-sm btn-warning" onclick="window.toggleUserActive('${user.id}', ${active ? false : true})">${active ? "Disable" : "Enable"}</button>
         <button class="btn btn-sm btn-danger" onclick="deleteUserLogin('${user.id}')">Delete</button>
       </div>` : ""}
     </div>`;
@@ -795,7 +799,7 @@ async function loadDrivers() {
     const myName = getProfileName();
     const driverSelect = document.getElementById("driverSelect");
     const found = drivers.find(d => d.name === myName);
-    if (found) driverSelect.value = myName;
+    if (found && driverSelect) driverSelect.value = myName;
   }
 }
 
@@ -839,11 +843,17 @@ async function loadDocuments() {
 
 // ── Dashboard ──────────────────────────────────────────
 function renderDashboard() {
-  document.getElementById("statTotal").textContent = documents.length;
-  document.getElementById("statExpired").textContent = documents.filter(d => getStatusInfo(d.date).diffDays !== null && getStatusInfo(d.date).diffDays < 0).length;
-  document.getElementById("statToday").textContent = documents.filter(d => getStatusInfo(d.date).diffDays === 0).length;
-  document.getElementById("stat7").textContent = documents.filter(d => { const n = getStatusInfo(d.date).diffDays; return n !== null && n > 0 && n <= 7; }).length;
-  document.getElementById("stat30").textContent = documents.filter(d => { const n = getStatusInfo(d.date).diffDays; return n !== null && n > 7 && n <= 30; }).length;
+  const totalEl = document.getElementById("statTotal");
+  const expiredEl = document.getElementById("statExpired");
+  const todayEl = document.getElementById("statToday");
+  const sevenEl = document.getElementById("stat7");
+  const thirtyEl = document.getElementById("stat30");
+
+  if (totalEl) totalEl.textContent = documents.length;
+  if (expiredEl) expiredEl.textContent = documents.filter(d => getStatusInfo(d.date).diffDays !== null && getStatusInfo(d.date).diffDays < 0).length;
+  if (todayEl) todayEl.textContent = documents.filter(d => getStatusInfo(d.date).diffDays === 0).length;
+  if (sevenEl) sevenEl.textContent = documents.filter(d => { const n = getStatusInfo(d.date).diffDays; return n !== null && n > 0 && n <= 7; }).length;
+  if (thirtyEl) thirtyEl.textContent = documents.filter(d => { const n = getStatusInfo(d.date).diffDays; return n !== null && n > 7 && n <= 30; }).length;
 
   const urgent = documents.filter(d => {
     const n = getStatusInfo(d.date).diffDays;
@@ -851,6 +861,7 @@ function renderDashboard() {
   }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const box = document.getElementById("urgentDocsList");
+  if (!box) return;
   if (!urgent.length) { box.innerHTML = `<div class="empty-state">✅ No expired documents.</div>`; return; }
   box.innerHTML = urgent.map(item => renderDocCard(item)).join("");
 }
@@ -916,7 +927,6 @@ function renderAllDocuments() {
 
   let items = [...documents];
 
-  // Search
   if (search) {
     items = items.filter(d =>
       (d.ownerName || "").toLowerCase().includes(search) ||
@@ -925,12 +935,10 @@ function renderAllDocuments() {
     );
   }
 
-  // Owner type filter
   if (ownerFilter !== "all") {
     items = items.filter(d => d.ownerType === ownerFilter);
   }
 
-  // Status filter
   if (statusFilter !== "all") {
     items = items.filter(d => {
       const { diffDays } = getStatusInfo(d.date);
@@ -943,7 +951,6 @@ function renderAllDocuments() {
     });
   }
 
-  // Sort
   items.sort((a, b) => {
     const da = new Date(a.date).getTime();
     const db2 = new Date(b.date).getTime();
@@ -989,13 +996,17 @@ function renderDocCard(item) {
 // ── Owner dropdown ─────────────────────────────────────
 window.updateOwnerDropdown = function() {
   const ownerType = document.getElementById("ownerType").value;
-  ["driverBlock", "truckBlock", "trailerBlock", "companyBlock"].forEach(id => document.getElementById(id).style.display = "none");
-  if (ownerType === "Driver") document.getElementById("driverBlock").style.display = "";
-  if (ownerType === "Truck") document.getElementById("truckBlock").style.display = "";
-  if (ownerType === "Trailer") document.getElementById("trailerBlock").style.display = "";
-  if (ownerType === "Company") document.getElementById("companyBlock").style.display = "";
+  ["driverBlock", "truckBlock", "trailerBlock", "companyBlock"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+  if (ownerType === "Driver" && document.getElementById("driverBlock")) document.getElementById("driverBlock").style.display = "";
+  if (ownerType === "Truck" && document.getElementById("truckBlock")) document.getElementById("truckBlock").style.display = "";
+  if (ownerType === "Trailer" && document.getElementById("trailerBlock")) document.getElementById("trailerBlock").style.display = "";
+  if (ownerType === "Company" && document.getElementById("companyBlock")) document.getElementById("companyBlock").style.display = "";
   if (isDriver() && ownerType === "Driver") {
-    document.getElementById("driverSelect").value = getProfileName();
+    const drvSel = document.getElementById("driverSelect");
+    if (drvSel) drvSel.value = getProfileName();
   }
 };
 
@@ -1130,10 +1141,6 @@ window.editDocument = function(id) {
 
   showTab("addDocTab");
   window.scrollTo({ top: 0, behavior: "smooth" });
-
-  // Highlight the nav button
-  const addDocBtn = document.querySelector('[onclick*="addDocTab"]');
-  if (addDocBtn) { document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active")); addDocBtn.classList.add("active"); }
 };
 
 function resetForm() {
@@ -1147,7 +1154,10 @@ function resetForm() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
-  ["driverBlock", "truckBlock", "trailerBlock", "companyBlock"].forEach(id => document.getElementById(id).style.display = "none");
+  ["driverBlock", "truckBlock", "trailerBlock", "companyBlock"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
 }
 window.cancelEdit = function() { resetForm(); };
 
@@ -1158,7 +1168,6 @@ window.selectOwnerDocs = function(ownerType, ownerName) {
   if (ownerType === "Trailer") selectedTrailer = ownerName;
   if (ownerType === "Company") selectedCompany = ownerName;
 
-  // Highlight selected item
   const tabMap = { Driver: "driversBrowse", Truck: "trucksBrowse", Trailer: "trailersBrowse", Company: "companiesBrowse" };
   const browseBox = document.getElementById(tabMap[ownerType]);
   if (browseBox) {
@@ -1278,16 +1287,15 @@ window.createUser = async function() {
   } finally { hideLoading(); }
 };
 
-window.toggleUserActive = async function(uid, active) {
+window.toggleUserActive = async function(uid, isActive) {
   if (!isManager()) { toast("Only managers can change user status.", "error"); return; }
-  const action = active === "true" ? "enable" : "disable";
-  if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+  if (!confirm(`Are you sure you want to ${isActive ? 'enable' : 'disable'} this user?`)) return;
   showLoading("Updating user…");
   try {
     const setUserActive = httpsCallable(functions, "setUserActive");
-    await setUserActive({ uid, active: active === "true" });
+    await setUserActive({ uid, active: !!isActive });
     await loadUsers();
-    toast(`User ${active === "true" ? "enabled" : "disabled"}.`, "success");
+    toast(`User ${isActive ? "enabled" : "disabled"}.`, "success");
   } catch (err) { toast(`Update failed: ${err.message}`, "error"); } finally { hideLoading(); }
 };
 
@@ -1320,7 +1328,6 @@ function updateRoleUI() {
 }
 
 // ── Init ───────────────────────────────────────────────
-
 function openDashboardFilter(statusValue){
   const searchInput = document.getElementById("searchInput");
   const filterStatus = document.getElementById("filterStatus");
@@ -1333,16 +1340,6 @@ function openDashboardFilter(statusValue){
   if(filterStatus) filterStatus.value = statusValue || "all";
 
   showTab("allDocsTab");
-
-  const allDocsButton = Array.from(document.querySelectorAll(".nav-btn")).find(btn =>
-    btn.getAttribute("onclick") && btn.getAttribute("onclick").includes("allDocsTab")
-  );
-
-  if(allDocsButton){
-    document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
-    allDocsButton.classList.add("active");
-  }
-
   renderAllDocuments();
 }
 window.openDashboardFilter = openDashboardFilter;
@@ -1364,9 +1361,6 @@ async function initAppData() {
     updateRoleUI();
     resetForm();
     showTab("dashboardTab");
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-    const dashBtn = document.querySelector('[onclick*="dashboardTab"]');
-    if (dashBtn) dashBtn.classList.add("active");
   } catch (err) {
     console.error(err);
     toast(`Error loading data: ${err.message}`, "error");
