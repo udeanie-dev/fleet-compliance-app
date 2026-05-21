@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v4.0</title>
+  <title>PermitSphere v4.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -49,8 +49,10 @@
     .tab-section { display: none; }
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
     label { font-size: 13px; font-weight: 500; color: var(--text-2); }
-    input, select { width: 100%; padding: 10px 13px; border: 1.5px solid var(--border-2); border-radius: var(--radius); font-size: 14px; outline: none; }
-    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: var(--radius); border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+    input, select { width: 100%; padding: 10px 13px; border: 1.5px solid var(--border-2); border-radius: var(--radius); font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus { border-color: var(--brand); }
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: var(--radius); border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+    .btn:active { opacity: 0.8; }
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-secondary { background: var(--accent-light); color: var(--accent); }
     .btn-ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border-2); }
@@ -95,8 +97,8 @@
       <h2 style="color:var(--brand); font-size: 26px;">PermitSphere</h2>
       <p style="color:var(--text-3); font-size: 14px;">Safe Fleet & Compliance Management</p>
     </div>
-    <div class="form-group"><label>Email Address</label><input id="loginEmail" type="email"></div>
-    <div class="form-group"><label>Password</label><input id="loginPassword" type="password"></div>
+    <div class="form-group"><label for="loginEmail">Email Address</label><input id="loginEmail" type="email" placeholder="email@example.com"></div>
+    <div class="form-group"><label for="loginPassword">Password</label><input id="loginPassword" type="password" placeholder="••••••••"></div>
     <button class="btn btn-primary" style="width:100%; margin-top:20px; justify-content:center;" onclick="loginUser()">Sign In</button>
   </div>
 </div>
@@ -113,7 +115,7 @@
   <div class="app-layout">
     <nav class="sidebar">
       <div class="nav-section">Operations</div>
-      <button class="nav-btn active" onclick="showTab('dashboardTab',this)">📈 Dashboard</button>
+      <button class="nav-btn active" id="btnDash" onclick="showTab('dashboardTab',this)">📈 Dashboard</button>
       <button class="nav-btn" onclick="showTab('addDocTab',this)">📝 Add Document</button>
       <button class="nav-btn" onclick="showTab('allDocsTab',this)">📄 All Documents</button>
       <button class="nav-btn" onclick="showTab('inspectTab',this)">📋 Daily Check</button>
@@ -129,7 +131,7 @@
     <main class="main">
       <div id="dashboardTab" class="tab-section" style="display:block;">
         <div id="mgrStats" class="stat-grid hidden">
-          <div class="stat-card">Total Fleet Docs<div class="stat-num" id="statTotal">0</div></div>
+          <div class="stat-card">Total Fleet Documents<div class="stat-num" id="statTotal">0</div></div>
           <div class="stat-card">Expired<div class="stat-num" id="statExpired" style="color:var(--danger)">0</div></div>
           <div class="stat-card">Due in 30 Days<div class="stat-num" id="stat30" style="color:goldenrod">0</div></div>
         </div>
@@ -145,15 +147,15 @@
         <div class="card">
           <div class="card-title">Upload Record</div>
           <div class="form-grid">
-            <div class="form-group"><label>Belongs To</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
-            <div id="drvGrp" class="form-group"><label>Select Driver</label><select id="selDrv"></select></div>
-            <div id="trkGrp" class="form-group hidden"><label>Select Vehicle</label><select id="selTrk"></select></div>
-            <div class="form-group"><label>Document Type</label><select id="selType"></select></div>
-            <div class="form-group"><label>Expiry Date</label><input id="expDate" type="date"></div>
-            <div class="form-group"><label>Reminder Email</label><input id="alertEmail" type="email"></div>
+            <div class="form-group"><label for="ownerType">Belongs To</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
+            <div id="drvGrp" class="form-group"><label for="selDrv">Select Driver</label><select id="selDrv"></select></div>
+            <div id="trkGrp" class="form-group hidden"><label for="selTrk">Select Vehicle</label><select id="selTrk"></select></div>
+            <div class="form-group"><label for="selType">Document Type</label><select id="selType"></select></div>
+            <div class="form-group"><label for="expDate">Expiry Date</label><input id="expDate" type="date"></div>
+            <div class="form-group"><label for="alertEmail">Reminder Email</label><input id="alertEmail" type="email" placeholder="reminders@example.com"></div>
           </div>
           <div style="margin-top:15px; display:flex; gap:10px; align-items:center;">
-             <input type="file" id="fileInput">
+             <input type="file" id="fileInput" aria-label="Upload document file">
              <button class="btn btn-secondary btn-sm" onclick="performOCR()">🔍 OCR Scan</button>
           </div>
           <button class="btn btn-primary" style="margin-top:20px;" onclick="saveDoc()">💾 Save Document</button>
@@ -164,15 +166,15 @@
         <div class="card">
           <div class="card-title">Daily Pre-Trip & PPE Checklist</div>
           <div class="form-grid">
-             <div class="form-group">Vehicle<select id="insTrk"></select></div>
-             <div class="form-group">Odometer<input id="insOdo" type="number"></div>
+             <div class="form-group"><label for="insTrk">Vehicle</label><select id="insTrk"></select></div>
+             <div class="form-group"><label for="insOdo">Odometer</label><input id="insOdo" type="number"></div>
           </div>
           <div style="margin-top:15px; font-weight:600;">Safety & PPE Checks</div>
           <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
-             <div class="form-group">Tyres Condition<select id="chkTyres"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
-             <div class="form-group">Brakes Condition<select id="chkBrakes"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
-             <div class="form-group">Safety Boots<select id="chkBoots"><option value="Yes">Yes</option><option value="No">No</option></select></div>
-             <div class="form-group">High-Vis Vest<select id="chkVest"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="form-group"><label for="chkTyres">Tyres Condition</label><select id="chkTyres"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
+             <div class="form-group"><label for="chkBrakes">Brakes Condition</label><select id="chkBrakes"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
+             <div class="form-group"><label for="chkBoots">Safety Boots</label><select id="chkBoots"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="form-group"><label for="chkVest">High-Vis Vest</label><select id="chkVest"><option value="Yes">Yes</option><option value="No">No</option></select></div>
           </div>
           <button class="btn btn-primary" style="margin-top:20px; width:100%; justify-content:center;" onclick="saveInspect()">🚀 Submit Checklist</button>
         </div>
@@ -249,7 +251,7 @@ async function loadData() {
     }
 
     renderUI();
-  } catch (e) { toast("Connection Error", "error"); } finally { showLoading(false); }
+  } catch (e) { toast("Connection Error", "error"); } finally { setLoad(false); }
 }
 
 function renderUI() {
@@ -298,7 +300,8 @@ function getFleetStatus(type, name) {
 window.viewDocs = (type, name) => {
   const list = docs.filter(d => d.ownerType === type && d.ownerName === name);
   const box = type === "Driver" ? "drDocs" : "trDocs";
-  document.getElementById(box).innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date})</div>`).join("") : "No records.";
+  const target = document.getElementById(box);
+  if (target) target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date})</div>`).join("") : "No records.";
 };
 
 function fillSelect(id, vals, p = "Select...") {
@@ -308,7 +311,7 @@ function fillSelect(id, vals, p = "Select...") {
 
 window.showTab = (id, btn) => {
   document.querySelectorAll(".tab-section").forEach(el => el.style.display = "none");
-  document.getElementById(id).style.display = "block";
+  const target = document.getElementById(id); if (target) target.style.display = "block";
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
 };
@@ -320,13 +323,13 @@ onAuthStateChanged(auth, async (u) => {
     document.getElementById("authArea").classList.add("hidden");
     document.getElementById("appArea").classList.remove("hidden");
     document.getElementById("userFull").textContent = getName();
-    document.getElementById("avatar").textContent = getName()[0].toUpperCase();
+    const avatar = document.getElementById("avatar"); if (avatar) avatar.textContent = getName()[0].toUpperCase();
     document.getElementById("mgrOnlyMenu").classList.toggle("hidden", isD());
     loadData(); registerPush();
   } else {
     document.getElementById("authArea").classList.remove("hidden");
     document.getElementById("appArea").classList.add("hidden");
-    showLoading(false);
+    setLoad(false);
   }
 });
 
@@ -342,6 +345,7 @@ async function registerPush() {
   }
 }
 
+// Attach functions to window for global access from HTML
 window.loginUser = async () => {
   const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value;
   try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed"); setLoad(false); }
@@ -358,17 +362,17 @@ window.saveDoc = async () => {
   const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
   const on = isD() ? getName() : (document.getElementById("selDrv").value || document.getElementById("selTrk").value);
   if (!on || !dt || !ed) return alert("Fill all fields");
-  showLoading(true, "Saving...");
+  setLoad(true, "Saving...");
   try {
     await addDoc(collection(db, "documents"), { ownerType:ot, ownerName:on, documentType:dt, date:ed, created:new Date().toISOString(), addedBy:auth.currentUser.uid });
     alert("Saved"); loadData();
-  } catch (e) { alert("Error"); } finally { showLoading(false); }
+  } catch (e) { alert("Error"); } finally { setLoad(false); }
 };
 
 window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required");
-  showLoading(true, "Submitting...");
+  setLoad(true, "Submitting...");
   try {
     await addDoc(collection(db, "inspections"), { truck:t, odo:o, driver:getName(), timestamp:new Date().toISOString() });
     alert("Checklist Submitted"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
@@ -383,13 +387,13 @@ window.shareWA = (id) => {
 
 window.performOCR = async () => {
   const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select image");
-  showLoading(true, "OCR Scanning...");
+  setLoad(true, "OCR Scanning...");
   try {
     const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f);
     const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/);
     if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0];
     await w.terminate(); toast("OCR Done", "success");
-  } catch (e) { toast("OCR Error", "error"); } finally { showLoading(false); }
+  } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
 };
 
 window.generatePDF = () => {
