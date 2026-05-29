@@ -136,9 +136,9 @@
     <main class="main">
       <div id="dashboardTab" class="tab-section" style="display:block;">
         <div id="mgrStats" class="stat-grid hidden">
-          <div class="stat-card">Total Fleet Documents<div class="stat-num" id="statTotal">0</div></div>
-          <div class="stat-card">Expired<div class="stat-num" id="statExpired" style="color:var(--danger)">0</div></div>
-          <div class="stat-card">Due in 30 Days<div class="stat-num" id="stat30" style="color:goldenrod">0</div></div>
+          <div class="stat-card" onclick="filterDash('all')">Total Fleet Documents<div class="stat-num" id="statTotal">0</div></div>
+          <div class="stat-card" onclick="filterDash('expired')">Expired<div class="stat-num" id="statExpired" style="color:var(--danger)">0</div></div>
+          <div class="stat-card" onclick="filterDash('due')">Due in 30 Days<div class="stat-num" id="stat30" style="color:goldenrod">0</div></div>
         </div>
         <div class="card">
           <div class="card-title" id="dashTitle">My Expirations</div>
@@ -155,9 +155,22 @@
             <div class="form-group"><label for="ownerType">Belongs To</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
             <div id="drvGrp" class="form-group"><label for="selDrv">Select Driver</label><select id="selDrv"></select></div>
             <div id="trkGrp" class="form-group hidden"><label for="selTrk">Select Vehicle</label><select id="selTrk"></select></div>
-            <div class="form-group"><label for="selType">Document Type</label><select id="selType"></select></div>
+            <div class="form-group">
+              <label for="selType">Document Type</label>
+              <div style="display:flex; gap:8px;">
+                <select id="selType" style="flex:1;"></select>
+                <button class="btn btn-ghost" onclick="manageDocTypes()" title="Manage Types">⚙️</button>
+              </div>
+            </div>
             <div class="form-group"><label for="expDate">Expiry Date</label><input id="expDate" type="date"></div>
-            <div class="form-group"><label for="alertEmail">Reminder Email</label><input id="alertEmail" type="email" value="docs@transmodalgroup.co.za" disabled></div>
+          </div>
+          <div id="typeManager" class="hidden" style="margin-bottom:15px; padding:15px; border:1px dashed var(--border); border-radius:var(--radius); background:var(--surface-2);">
+             <label for="newTypeName">Add New Document Type</label>
+             <div style="display:flex; gap:8px; margin-top:5px;">
+               <input id="newTypeName" type="text" placeholder="e.g. Comisa Permit">
+               <button class="btn btn-secondary btn-sm" onclick="addDocType()">Add</button>
+             </div>
+             <div id="typeListArea" style="margin-top:10px; max-height:100px; overflow:auto; font-size:12px;"></div>
           </div>
           <div style="margin-top:15px; display:flex; gap:10px; align-items:center;">
              <input type="file" id="fileInput" aria-label="Upload document file">
@@ -222,7 +235,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-functions.js";
@@ -311,9 +324,25 @@ function renderUI() {
     loadUsersList();
   }
 
-  const urgent = docs.filter(d => getStatus(d.date).urgent);
-  document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `<div class="doc-item"><div class="doc-title-line" style="color:var(--danger)">${d.documentType}</div><div class="doc-meta"><span class="pill expired">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div>${d.fileUrl ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`) : "<div style='text-align:center; padding:20px; color:#666;'>✅ All good.</div>";
-  document.getElementById("archiveList").innerHTML = docs.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date} · ${d.ownerName}</small><br><div style="display:flex; gap:8px; margin-top:10px;">${d.fileUrl ? `<button class="btn btn-secondary btn-sm" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="shareWA('${d.id}')">Share</button></div></div>`).join("");
+  renderDashList(docs.filter(d => getStatus(d.date).urgent));
+  document.getElementById("archiveList").innerHTML = docs.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date} · ${d.ownerName}</small><br><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${d.fileUrl ? `<button class="btn btn-secondary btn-sm" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="shareWA('${d.id}')">Share</button>${!isD() ? `<button class="btn btn-ghost btn-sm" style="color:var(--brand)" onclick="editDoc('${d.id}')">✏️ Edit</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteDocItem('${d.id}')">🗑️ Delete</button>` : ''}</div></div>`).join("");
+}
+
+window.filterDash = (mode) => {
+  let list = [];
+  const title = document.getElementById("dashTitle");
+  if (mode === 'all') { list = docs; title.textContent = "All Fleet Documents"; }
+  else if (mode === 'expired') { list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); title.textContent = "Expired Documents"; }
+  else if (mode === 'due') { list = docs.filter(d => getStatus(d.date).text.includes("days")); title.textContent = "Due in 30 Days"; }
+  renderDashList(list);
+};
+
+function renderDashList(list) {
+  const area = document.getElementById("urgentList");
+  area.innerHTML = list.length ? list.map(d => {
+    const s = getStatus(d.date);
+    return `<div class="doc-item"><div class="doc-title-line" style="font-weight:600;">${d.documentType} - ${d.ownerName}</div><div class="doc-meta"><span class="pill ${s.class}">${s.text}</span><span class="pill">${d.date}</span></div>${d.fileUrl ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`;
+  }).join("") : "<div style='text-align:center; padding:20px; color:#666;'>✅ No matching records.</div>";
 }
 
 function renderBrowse() {
@@ -501,6 +530,62 @@ window.createNewUser = async () => {
   } finally {
     setLoad(false);
   }
+};
+
+window.manageDocTypes = async () => {
+  const area = document.getElementById("typeListArea");
+  const mgr = document.getElementById("typeManager");
+  mgr.classList.toggle("hidden");
+  if (mgr.classList.contains("hidden")) return;
+
+  const snap = await getDocs(collection(db, "documentTypes"));
+  area.innerHTML = snap.docs.map(d => `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding:4px; border-bottom:1px solid #eee;">
+      <span>${d.data().name}</span>
+      <button onclick="deleteDocType('${d.id}')" style="border:none; background:none; color:var(--danger); cursor:pointer;">✖</button>
+    </div>
+  `).join("");
+};
+
+window.addDocType = async () => {
+  const name = document.getElementById("newTypeName").value;
+  if (!name) return alert("Enter a name");
+  try {
+    await addDoc(collection(db, "documentTypes"), { name });
+    document.getElementById("newTypeName").value = "";
+    loadData(); manageDocTypes();
+  } catch (e) { alert("Error adding type"); }
+};
+
+window.deleteDocType = async (id) => {
+  if (!confirm("Remove this document type?")) return;
+  try {
+    await deleteDoc(doc(db, "documentTypes", id));
+    loadData(); manageDocTypes();
+  } catch (e) { alert("Error deleting type"); }
+};
+
+window.editDoc = (id) => {
+  const d = docs.find(x => x.id === id); if (!d) return;
+  document.getElementById("ownerType").value = d.ownerType;
+  updateForm();
+  if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName;
+  else document.getElementById("selTrk").value = d.ownerName;
+  document.getElementById("selType").value = d.documentType;
+  document.getElementById("expDate").value = d.date;
+  showTab('addDocTab', null);
+  // Change save button to Update? Or just let them save a new one.
+  // For simplicity, let's just populate the fields.
+  alert("Editing: " + d.documentType + ". Change fields and click Save to create/update.");
+};
+
+window.deleteDocItem = async (id) => {
+  if (!confirm("Permanently delete this document record?")) return;
+  setLoad(true, "Deleting...");
+  try {
+    await deleteDoc(doc(db, "documents", id));
+    alert("Deleted"); loadData();
+  } catch (e) { alert("Error deleting: " + e.message); } finally { setLoad(false); }
 };
 
 window.generatePDF = () => {
