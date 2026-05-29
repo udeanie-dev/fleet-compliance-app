@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v4.2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <title>PermitSphere v4.6</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,11 +23,13 @@
       --shadow: 0 4px 12px rgba(0,0,0,.05);
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-    .header { background: var(--brand); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(90,45,130,.25); }
-    .header-brand { color: #fff; font-weight: 600; font-size: 20px; letter-spacing: -0.3px; }
-    .user-chip { background: rgba(255,255,255,.15); border-radius: 99px; padding: 5px 14px; display: flex; align-items: center; gap: 8px; color: #fff; }
-    .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
-    .btn-logout { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 7px 16px; border-radius: 99px; font-size: 13px; cursor: pointer; }
+    .header { background: var(--brand); padding: env(safe-area-inset-top, 0) 16px 0; height: auto; min-height: calc(64px + env(safe-area-inset-top, 0)); display: flex; flex-direction: column; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(90,45,130,.25); padding-bottom: 8px; }
+    .header-top { display: flex; width: 100%; align-items: center; justify-content: space-between; height: 44px; padding-top: 4px; }
+    .header-brand { color: #fff; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; }
+    .user-chip { background: rgba(255,255,255,.15); border-radius: 99px; padding: 4px 12px; display: flex; align-items: center; gap: 8px; color: #fff; max-width: 200px; }
+    .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    #userFull { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .btn-logout { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 7px 16px; border-radius: 99px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
     .app-layout { display: flex; min-height: calc(100vh - 60px); }
     .sidebar { width: 230px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; }
     .main { flex: 1; padding: 24px; overflow: auto; min-width: 0; }
@@ -73,14 +76,13 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 768px) {
-      .app-layout { flex-direction: column; }
-      .sidebar { display: flex; width: 100%; height: auto; position: sticky; top: 60px; z-index: 90; overflow-x: auto; padding: 8px; gap: 6px; border-bottom: 1px solid var(--border); }
-      .nav-btn { flex: 0 0 auto; width: auto; border-radius: 999px; border: 1px solid var(--border); padding: 8px 16px; font-size: 13px; }
-      .nav-btn.active { background: var(--brand); color: #fff; border-left: none; }
-      .nav-section { display: none; }
-      .main { padding: 16px; }
-      .stat-grid { grid-template-columns: 1fr 1fr; }
-      .browse-grid { grid-template-columns: 1fr; }
+      .header { padding: env(safe-area-inset-top, 0) 12px 12px; }
+      .header-brand { font-size: 19px; }
+      .sidebar { display: grid; grid-template-columns: repeat(2, 1fr); width: 100%; height: auto; position: sticky; top: 110px; z-index: 90; padding: 10px; gap: 8px; border-bottom: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      .nav-btn { width: 100%; border-radius: 8px; border: 1.2px solid var(--border); padding: 8px 4px; font-size: 12px; min-height: 48px; font-weight: 500; }
+      #mgrOnlyMenu { display: contents; }
+      .user-chip { max-width: 160px; font-size: 12px; }
+      .btn-logout { padding: 6px 12px; font-size: 12px; }
     }
   </style>
 </head>
@@ -105,10 +107,12 @@
 
 <div id="appArea" class="hidden">
   <div class="header">
-    <div class="header-brand">PermitSphere</div>
-    <div style="display:flex; gap:12px; align-items:center;">
-      <div class="user-chip"><div class="user-avatar" id="avatar">?</div><span id="userFull">User</span></div>
+    <div class="header-top">
+      <div class="header-brand">PermitSphere</div>
       <button class="btn-logout" onclick="logoutUser()">Logout</button>
+    </div>
+    <div style="display:flex; width: 100%; justify-content: center; margin-top: 4px;">
+      <div class="user-chip"><div class="user-avatar" id="avatar">?</div><span id="userFull">User</span></div>
     </div>
   </div>
 
@@ -122,6 +126,7 @@
 
       <div id="mgrOnlyMenu" class="hidden">
         <div class="nav-section">Fleet Management</div>
+        <button class="nav-btn" onclick="showTab('usersTab',this)">👥 Users List</button>
         <button class="nav-btn" onclick="showTab('driversTab',this)">🧑 Drivers List</button>
         <button class="nav-btn" onclick="showTab('trucksTab',this)">🚚 Trucks List</button>
         <button class="nav-btn" onclick="showTab('reportsTab',this)">📊 PDF Reports</button>
@@ -152,7 +157,7 @@
             <div id="trkGrp" class="form-group hidden"><label for="selTrk">Select Vehicle</label><select id="selTrk"></select></div>
             <div class="form-group"><label for="selType">Document Type</label><select id="selType"></select></div>
             <div class="form-group"><label for="expDate">Expiry Date</label><input id="expDate" type="date"></div>
-            <div class="form-group"><label for="alertEmail">Reminder Email</label><input id="alertEmail" type="email" placeholder="reminders@example.com"></div>
+            <div class="form-group"><label for="alertEmail">Reminder Email</label><input id="alertEmail" type="email" value="docs@transmodalgroup.co.za" disabled></div>
           </div>
           <div style="margin-top:15px; display:flex; gap:10px; align-items:center;">
              <input type="file" id="fileInput" aria-label="Upload document file">
@@ -181,6 +186,31 @@
       </div>
 
       <div id="driversTab" class="tab-section"><div class="card"><div class="card-title">Drivers Status</div><div class="browse-grid"><div id="drBrowse"></div><div id="drDocs"></div></div></div></div>
+
+      <div id="usersTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Add New System User</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="newUserFirstName">First Name</label><input id="newUserFirstName" type="text" placeholder="John"></div>
+            <div class="form-group"><label for="newUserLastName">Surname</label><input id="newUserLastName" type="text" placeholder="Doe"></div>
+            <div class="form-group"><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="john.doe@example.com"></div>
+            <div class="form-group"><label for="newUserPass">Initial Password</label><input id="newUserPass" type="password" placeholder="Min 6 chars"></div>
+            <div class="form-group">
+              <label for="newUserRole">System Role</label>
+              <select id="newUserRole">
+                <option value="Driver">Driver</option>
+                <option value="Controller">Controller</option>
+                <option value="Manager">Manager</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:20px; width:100%; justify-content:center;" onclick="createNewUser()">👤 Create User Account</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Users</div>
+          <div id="usersListArea">Loading users...</div>
+        </div>
+      </div>
       <div id="trucksTab" class="tab-section"><div class="card"><div class="card-title">Vehicles Status</div><div class="browse-grid"><div id="trBrowse"></div><div id="trDocs"></div></div></div></div>
       <div id="reportsTab" class="tab-section"><div class="card"><div class="card-title">Compliance Reports</div><button class="btn btn-secondary" onclick="generatePDF()">📄 Download PDF</button></div></div>
     </main>
@@ -190,14 +220,15 @@
 <div id="toast-wrap"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-functions.js";
 
 const cfg = { apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8", authDomain: "fleet-compliance-app.firebaseapp.com", projectId: "fleet-compliance-app", storageBucket: "fleet-compliance-app.firebasestorage.app", messagingSenderId: "839373661347", appId: "1:839373661347:web:c6704a138194e2b17a0b16", measurementId: "G-E05H3WEPN6" };
-const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), storage = getStorage(app), messaging = getMessaging(app);
+const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), storage = getStorage(app), messaging = getMessaging(app), functions = getFunctions(app);
 
 let profile = null, docs = [];
 
@@ -228,12 +259,12 @@ async function loadData() {
   const isDriverUser = isD();
 
   try {
-    // 1. STRICT PRIVACY FETCH: Drivers ONLY load their records
+    // 1. DATA FETCH: Drivers ONLY load their records; Managers load ALL
     let q = isDriverUser ? query(collection(db, "documents"), where("ownerName", "==", me)) : collection(db, "documents");
     const docSnap = await getDocs(q);
     docs = []; docSnap.forEach(d => {
        const data = d.data();
-       // Double-Lock: Even if the query is bypassed, the app rejects wrong data here
+       // Double-Lock: Extra safety for drivers on the device
        if (!isDriverUser || data.ownerName === me) docs.push({ id: d.id, ...data });
     });
 
@@ -248,11 +279,24 @@ async function loadData() {
     if (isDriverUser) {
       const ot = document.getElementById("ownerType"); if (ot) { ot.value = "Driver"; ot.disabled = true; }
       const sd = document.getElementById("selDrv"); if (sd) { sd.value = me; sd.disabled = true; }
+      updateForm();
     }
 
     renderUI();
-  } catch (e) { toast("Connection Error", "error"); } finally { setLoad(false); }
+  } catch (e) { console.error(e); toast("Connection Error: " + e.message, "error"); } finally { setLoad(false); }
 }
+
+window.resetDocForm = () => {
+  if (!isD()) {
+    document.getElementById("ownerType").value = "Driver";
+    document.getElementById("selDrv").value = "";
+    document.getElementById("selTrk").value = "";
+  }
+  document.getElementById("selType").value = "";
+  document.getElementById("expDate").value = "";
+  document.getElementById("fileInput").value = "";
+  updateForm();
+};
 
 function renderUI() {
   const isDriverUser = isD();
@@ -264,11 +308,12 @@ function renderUI() {
     document.getElementById("statExpired").textContent = docs.filter(d => getStatus(d.date).text === "EXPIRED").length;
     document.getElementById("stat30").textContent = docs.filter(d => getStatus(d.date).text.includes("days")).length;
     renderBrowse();
+    loadUsersList();
   }
 
   const urgent = docs.filter(d => getStatus(d.date).urgent);
-  document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `<div class="doc-item"><div class="doc-title-line" style="color:var(--danger)">${d.documentType}</div><div class="doc-meta"><span class="pill expired">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div>`) : "<div style='text-align:center; padding:20px; color:#666;'>✅ All good.</div>";
-  document.getElementById("archiveList").innerHTML = docs.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date} · ${d.ownerName}</small><br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="shareWA('${d.id}')">Share</button></div>`).join("");
+  document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `<div class="doc-item"><div class="doc-title-line" style="color:var(--danger)">${d.documentType}</div><div class="doc-meta"><span class="pill expired">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div>${d.fileUrl ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`) : "<div style='text-align:center; padding:20px; color:#666;'>✅ All good.</div>";
+  document.getElementById("archiveList").innerHTML = docs.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date} · ${d.ownerName}</small><br><div style="display:flex; gap:8px; margin-top:10px;">${d.fileUrl ? `<button class="btn btn-secondary btn-sm" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="shareWA('${d.id}')">Share</button></div></div>`).join("");
 }
 
 function renderBrowse() {
@@ -301,7 +346,7 @@ window.viewDocs = (type, name) => {
   const list = docs.filter(d => d.ownerType === type && d.ownerName === name);
   const box = type === "Driver" ? "drDocs" : "trDocs";
   const target = document.getElementById(box);
-  if (target) target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date})</div>`).join("") : "No records.";
+  if (target) target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date}) ${d.fileUrl ? `<br><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`).join("") : "No records.";
 };
 
 function fillSelect(id, vals, p = "Select...") {
@@ -359,14 +404,34 @@ window.updateForm = () => {
 };
 
 window.saveDoc = async () => {
+  if (!profile) return alert("Profile loading, please wait...");
   const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
   const on = isD() ? getName() : (document.getElementById("selDrv").value || document.getElementById("selTrk").value);
+  const em = document.getElementById("alertEmail").value;
+  const file = document.getElementById("fileInput").files[0];
+
   if (!on || !dt || !ed) return alert("Fill all fields");
   setLoad(true, "Saving...");
   try {
-    await addDoc(collection(db, "documents"), { ownerType:ot, ownerName:on, documentType:dt, date:ed, created:new Date().toISOString(), addedBy:auth.currentUser.uid });
-    alert("Saved"); loadData();
-  } catch (e) { alert("Error"); } finally { setLoad(false); }
+    let fileUrl = "";
+    if (file) {
+      const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
+      const uploadResult = await uploadBytes(storageRef, file);
+      fileUrl = await getDownloadURL(uploadResult.ref);
+    }
+
+    await addDoc(collection(db, "documents"), {
+      ownerType: ot,
+      ownerName: on,
+      documentType: dt,
+      date: ed,
+      email: em,
+      fileUrl: fileUrl,
+      created: new Date().toISOString(),
+      addedBy: auth.currentUser.uid
+    });
+    alert("Saved Successfully"); resetDocForm(); loadData();
+  } catch (e) { console.error(e); alert("Error saving document: " + e.message); } finally { setLoad(false); }
 };
 
 window.saveInspect = async () => {
@@ -376,7 +441,7 @@ window.saveInspect = async () => {
   try {
     await addDoc(collection(db, "inspections"), { truck:t, odo:o, driver:getName(), timestamp:new Date().toISOString() });
     alert("Checklist Submitted"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
-  } catch (e) { alert("Error"); } finally { showLoading(false); }
+  } catch (e) { console.error(e); alert("Error submitting inspection: " + e.message); } finally { setLoad(false); }
 };
 
 window.shareWA = (id) => {
@@ -394,6 +459,48 @@ window.performOCR = async () => {
     if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0];
     await w.terminate(); toast("OCR Done", "success");
   } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+};
+
+async function loadUsersList() {
+  if (isD()) return;
+  const area = document.getElementById("usersListArea");
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    area.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      return `<div class="browse-item" style="margin-bottom:8px;">
+        <div><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>
+      </div>`;
+    }).join("");
+  } catch (e) { area.innerHTML = "Error loading users."; }
+}
+
+window.createNewUser = async () => {
+  const name = document.getElementById("newUserFirstName").value;
+  const surname = document.getElementById("newUserLastName").value;
+  const email = document.getElementById("newUserEmail").value;
+  const pass = document.getElementById("newUserPass").value;
+  const role = document.getElementById("newUserRole").value;
+
+  if (!name || !surname || !email || !pass) return alert("All fields required");
+
+  setLoad(true, "Creating Employee Account...");
+  try {
+    const createUserFunc = httpsCallable(functions, 'createAppUser');
+    const result = await createUserFunc({ name, surname, email, password: pass, role });
+    alert("User Created Successfully!");
+    // Clear form
+    document.getElementById("newUserFirstName").value = "";
+    document.getElementById("newUserLastName").value = "";
+    document.getElementById("newUserEmail").value = "";
+    document.getElementById("newUserPass").value = "";
+    loadUsersList();
+  } catch (e) {
+    console.error(createUserFuncError = e);
+    alert("Error creating user: " + e.message);
+  } finally {
+    setLoad(false);
+  }
 };
 
 window.generatePDF = () => {
