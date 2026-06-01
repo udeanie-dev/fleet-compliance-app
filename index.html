@@ -7,6 +7,7 @@
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -225,7 +226,15 @@
         </div>
       </div>
       <div id="trucksTab" class="tab-section"><div class="card"><div class="card-title">Vehicles Status</div><div class="browse-grid"><div id="trBrowse"></div><div id="trDocs"></div></div></div></div>
-      <div id="reportsTab" class="tab-section"><div class="card"><div class="card-title">Compliance Reports</div><button class="btn btn-secondary" onclick="generatePDF()">📄 Download PDF</button></div></div>
+      <div id="reportsTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Compliance Reports</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="generatePDF()">📄 Download PDF Report</button>
+            <button class="btn btn-success" onclick="generateExcel()" style="background:var(--success); color:#fff;">📊 Download Excel Sheet</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </div>
@@ -282,12 +291,16 @@ async function loadData() {
     });
 
     // 2. Fetch Helper Lists
-    const drs = await getDocs(collection(db, "drivers")), trs = await getDocs(collection(db, "trucks")), dts = await getDocs(collection(db, "documentTypes"));
+    const drSnap = await getDocs(collection(db, "drivers")), trSnap = await getDocs(collection(db, "trucks")), dtSnap = await getDocs(collection(db, "documentTypes"));
 
-    fillSelect("selDrv", drs.docs.map(d=>d.data().name).filter(n => !isDriverUser || n === me));
-    fillSelect("selTrk", isDriverUser ? [] : trs.docs.map(d=>d.data().fleetNumber));
-    fillSelect("insTrk", trs.docs.map(d=>d.data().fleetNumber));
-    fillSelect("selType", dts.docs.map(d=>d.data().name));
+    const drs = drSnap.docs.map(d=>d.data().name).filter(n => !isDriverUser || n === me).sort();
+    const trs = trSnap.docs.map(d=>d.data().fleetNumber).sort();
+    const dts = dtSnap.docs.map(d=>d.data().name).sort();
+
+    fillSelect("selDrv", drs);
+    fillSelect("selTrk", isDriverUser ? [] : trs);
+    fillSelect("insTrk", trs);
+    fillSelect("selType", dts);
 
     if (isDriverUser) {
       const ot = document.getElementById("ownerType"); if (ot) { ot.value = "Driver"; ot.disabled = true; }
@@ -435,12 +448,13 @@ window.updateForm = () => {
 window.saveDoc = async () => {
   if (!profile) return alert("Profile loading, please wait...");
   const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
-  const on = isD() ? getName() : (document.getElementById("selDrv").value || document.getElementById("selTrk").value);
-  const em = document.getElementById("alertEmail").value;
+  const drv = document.getElementById("selDrv").value, trk = document.getElementById("selTrk").value;
+  const on = isD() ? getName() : (ot === 'Driver' ? drv : trk);
+  const em = "docs@transmodalgroup.co.za";
   const file = document.getElementById("fileInput").files[0];
 
-  if (!on || !dt || !ed) return alert("Fill all fields");
-  setLoad(true, "Saving...");
+  if (!on || !dt || !ed) return alert("Please select a " + (ot === 'Driver' ? 'Driver' : 'Vehicle') + ", Document Type, and Expiry Date.");
+  setLoad(true, "Saving Document...");
   try {
     let fileUrl = "";
     if (file) {
@@ -550,19 +564,35 @@ window.manageDocTypes = async () => {
 window.addDocType = async () => {
   const name = document.getElementById("newTypeName").value;
   if (!name) return alert("Enter a name");
+  setLoad(true, "Adding Document Type...");
   try {
     await addDoc(collection(db, "documentTypes"), { name });
     document.getElementById("newTypeName").value = "";
-    loadData(); manageDocTypes();
-  } catch (e) { alert("Error adding type"); }
+    alert("Type Added Successfully!");
+    await loadData();
+    await manageDocTypes();
+  } catch (e) {
+    console.error(e);
+    alert("Error adding type: " + e.message);
+  } finally {
+    setLoad(false);
+  }
 };
 
 window.deleteDocType = async (id) => {
   if (!confirm("Remove this document type?")) return;
+  setLoad(true, "Removing Type...");
   try {
     await deleteDoc(doc(db, "documentTypes", id));
-    loadData(); manageDocTypes();
-  } catch (e) { alert("Error deleting type"); }
+    alert("Type Removed Successfully!");
+    await loadData();
+    await manageDocTypes();
+  } catch (e) {
+    console.error(e);
+    alert("Error deleting type: " + e.message);
+  } finally {
+    setLoad(false);
+  }
 };
 
 window.editDoc = (id) => {
@@ -590,9 +620,40 @@ window.deleteDocItem = async (id) => {
 
 window.generatePDF = () => {
   const { jsPDF: Doc } = window.jspdf; const doc = new Doc();
-  doc.text("Compliance Report", 14, 20);
-  let y = 30; docs.forEach(d => { doc.text(`${d.ownerName} - ${d.documentType} (${d.date})`, 14, y); y += 10; });
-  doc.save("Report.pdf");
+  doc.setFontSize(18); doc.text("Fleet Compliance Report", 14, 20);
+  doc.setFontSize(10); doc.text("Generated on: " + new Date().toLocaleString(), 14, 28);
+
+  let y = 40;
+  doc.setFont(undefined, 'bold');
+  doc.text("Owner", 14, y); doc.text("Document Type", 60, y); doc.text("Expiry Date", 120, y); doc.text("Status", 160, y);
+  doc.setFont(undefined, 'normal');
+  y += 8;
+
+  docs.forEach(d => {
+    if (y > 280) { doc.addPage(); y = 20; }
+    const s = getStatus(d.date).text;
+    doc.text(`${d.ownerName}`, 14, y);
+    doc.text(`${d.documentType}`, 60, y);
+    doc.text(`${d.date}`, 120, y);
+    doc.text(`${s}`, 160, y);
+    y += 7;
+  });
+  doc.save("PermitSphere_Report.pdf");
+};
+
+window.generateExcel = () => {
+  const data = docs.map(d => ({
+    "Belongs To": d.ownerType,
+    "Name/Fleet #": d.ownerName,
+    "Document Type": d.documentType,
+    "Expiry Date": d.date,
+    "Status": getStatus(d.date).text,
+    "File URL": d.fileUrl || "No File"
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Compliance");
+  XLSX.writeFile(wb, "PermitSphere_Data.xlsx");
 };
 </script>
 </body>
