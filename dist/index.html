@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PermitSphere v4.6</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #5A2D82; --brand-dark: #3e1d5e; --brand-light: #f3eef9;
+      --accent: #149B91; --accent-light: #e6f7f6;
+      --danger: #c0392b; --danger-light: #fdf0ef;
+      --warning: #d97706; --warning-light: #fffbeb;
+      --success: #16a34a; --success-light: #f0fdf4;
+      --text: #1a1a2e; --text-2: #4b5563; --text-3: #9ca3af;
+      --border: #e5e7eb; --border-2: #d1d5db;
+      --bg: #f5f4f0; --surface: #ffffff; --surface-2: #fafaf9;
+      --radius: 12px; --radius-lg: 18px;
+      --shadow: 0 4px 12px rgba(0,0,0,.05);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    .header { background: var(--brand); padding: env(safe-area-inset-top, 0) 16px 0; height: auto; min-height: calc(64px + env(safe-area-inset-top, 0)); display: flex; flex-direction: column; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(90,45,130,.25); padding-bottom: 8px; }
+    .header-top { display: flex; width: 100%; align-items: center; justify-content: space-between; height: 44px; padding-top: 4px; }
+    .header-brand { color: #fff; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; }
+    .user-chip { background: rgba(255,255,255,.15); border-radius: 99px; padding: 4px 12px; display: flex; align-items: center; gap: 8px; color: #fff; max-width: 200px; }
+    .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    #userFull { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .btn-logout { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 7px 16px; border-radius: 99px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+    .app-layout { display: flex; min-height: calc(100vh - 60px); }
+    .sidebar { width: 230px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; }
+    .main { flex: 1; padding: 24px; overflow: auto; min-width: 0; }
+    .nav-section { padding: 6px 16px 4px; font-size: 11px; font-weight: 600; letter-spacing: .07em; color: var(--text-3); text-transform: uppercase; margin-top: 8px; }
+    .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; padding: 9px 16px; font-size: 14px; color: var(--text-2); cursor: pointer; text-align: left; }
+    .nav-btn:hover { background: var(--brand-light); color: var(--brand); }
+    .nav-btn.active { background: var(--brand-light); color: var(--brand); font-weight: 600; border-left: 3px solid var(--brand); }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border-radius: var(--radius); padding: 16px 20px; border: 1px solid var(--border); box-shadow: var(--shadow); cursor: pointer; }
+    .stat-label { font-size: 12px; color: var(--text-3); }
+    .stat-num { font-size: 30px; font-weight: 600; }
+    .card { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-title { font-size: 17px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
+    .doc-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; background: var(--surface-2); }
+    .doc-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; background: var(--surface); border: 1px solid var(--border); }
+    .pill.expired { background: var(--danger-light); color: var(--danger); border-color: #fca5a5; }
+    .pill.warning { background: var(--warning-light); color: var(--warning); border-color: #fcd34d; }
+    .pill.ok { background: var(--success-light); color: var(--success); border-color: #86efac; }
+    .tab-section { display: none; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
+    label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    input, select { width: 100%; padding: 10px 13px; border: 1.5px solid var(--border-2); border-radius: var(--radius); font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus { border-color: var(--brand); }
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: var(--radius); border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+    .btn:active { opacity: 0.8; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-secondary { background: var(--accent-light); color: var(--accent); }
+    .btn-ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border-2); }
+    .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 20px; }
+    .auth-card { background: var(--surface); border-radius: var(--radius-lg); padding: 36px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
+    .browse-item { padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .browse-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 18px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-ok { background: var(--success); }
+    .status-warning { background: var(--warning); }
+    .status-danger { background: var(--danger); }
+    .hidden { display: none !important; }
+    #toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: var(--text); color: #fff; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; box-shadow: var(--shadow-lg); opacity: 0; transform: translateY(10px); transition: 0.3s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    #loading-overlay { position: fixed; inset: 0; background: #fff; z-index: 9998; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 15px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #eee; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .inspect-item { display: flex; flex-direction: column; gap: 4px; }
+    .inspect-item label { font-size: 11px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .inspect-item select { padding: 6px 8px; font-size: 12px; }
+    .section-title { font-size: 14px; font-weight: 600; color: var(--brand); margin: 15px 0 8px; border-bottom: 1px solid var(--brand-light); padding-bottom: 4px; }
+
+    @media (max-width: 768px) {
+      .header { padding: env(safe-area-inset-top, 0) 12px 12px; }
+      .header-brand { font-size: 19px; }
+      .sidebar { display: grid; grid-template-columns: repeat(2, 1fr); width: 100%; height: auto; position: sticky; top: 110px; z-index: 90; padding: 10px; gap: 8px; border-bottom: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      .nav-btn { width: 100%; border-radius: 8px; border: 1.2px solid var(--border); padding: 8px 4px; font-size: 12px; min-height: 48px; font-weight: 500; }
+      #mgrOnlyMenu { display: contents; }
+      .user-chip { max-width: 160px; font-size: 12px; }
+      .btn-logout { padding: 6px 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div id="loading-text" style="font-size: 13px; color: #666;">Syncing Secure Data...</div>
+</div>
+
+<div id="authArea" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div style="text-align:center; margin-bottom:24px;">
+      <h2 style="color:var(--brand); font-size: 26px;">PermitSphere</h2>
+      <p style="color:var(--text-3); font-size: 14px;">Safe Fleet & Compliance Management</p>
+    </div>
+    <div class="form-group"><label for="loginEmail">Email Address</label><input id="loginEmail" type="email" placeholder="email@example.com"></div>
+    <div class="form-group"><label for="loginPassword">Password</label><input id="loginPassword" type="password" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%; margin-top:20px; justify-content:center;" onclick="loginUser()">Sign In</button>
+  </div>
+</div>
+
+<div id="appArea" class="hidden">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">PermitSphere</div>
+      <button class="btn-logout" onclick="logoutUser()">Logout</button>
+    </div>
+    <div style="display:flex; width: 100%; justify-content: center; margin-top: 4px;">
+      <div class="user-chip"><div class="user-avatar" id="avatar">?</div><span id="userFull">User</span></div>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <nav class="sidebar">
+      <button class="nav-btn active" id="btnDash" onclick="showTab('dashboardTab',this)">📈 Dashboard</button>
+      <button class="nav-btn" onclick="showTab('addDocTab',this)">📝 Add Document</button>
+      <button class="nav-btn" onclick="showTab('allDocsTab',this)">📄 All Documents</button>
+      <button class="nav-btn" onclick="showTab('inspectTab',this)">📋 Daily Check</button>
+
+      <div id="mgrOnlyMenu" class="hidden">
+        <div class="nav-section">Fleet Management</div>
+        <button class="nav-btn" onclick="showTab('usersTab',this)">👥 Users List</button>
+        <button class="nav-btn" onclick="showTab('driversTab',this)">🧑 Drivers List</button>
+        <button class="nav-btn" onclick="showTab('trucksTab',this)">🚚 Trucks List</button>
+        <button class="nav-btn" onclick="showTab('reportsTab',this)">📊 PDF Reports</button>
+      </div>
+    </nav>
+
+    <main class="main">
+      <div id="dashboardTab" class="tab-section" style="display:block;">
+        <div id="mgrStats" class="stat-grid hidden">
+          <div class="stat-card" onclick="filterDash('all')">Total Fleet Documents<div class="stat-num" id="statTotal">0</div></div>
+          <div class="stat-card" onclick="filterDash('expired')">Expired<div class="stat-num" id="statExpired" style="color:var(--danger)">0</div></div>
+          <div class="stat-card" onclick="filterDash('due')">Due in 30 Days<div class="stat-num" id="stat30" style="color:goldenrod">0</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title" id="dashTitle">My Expirations</div>
+          <div id="urgentList"></div>
+        </div>
+      </div>
+
+      <div id="allDocsTab" class="tab-section"><div class="card"><div class="card-title">Archive</div><div id="archiveList"></div></div></div>
+
+      <div id="addDocTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Upload Record</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="ownerType">Belongs To</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
+            <div id="drvGrp" class="form-group"><label for="selDrv">Select Driver</label><select id="selDrv"></select></div>
+            <div id="trkGrp" class="form-group hidden"><label for="selTrk">Select Vehicle</label><select id="selTrk"></select></div>
+            <div class="form-group">
+              <label for="selType">Document Type</label>
+              <div style="display:flex; gap:8px;">
+                <select id="selType" style="flex:1;"></select>
+                <button class="btn btn-ghost" onclick="manageDocTypes()" title="Manage Types">⚙️</button>
+              </div>
+            </div>
+            <div class="form-group"><label for="expDate">Expiry Date</label><input id="expDate" type="date"></div>
+          </div>
+          <div id="typeManager" class="hidden" style="margin-bottom:15px; padding:15px; border:1px dashed var(--border); border-radius:var(--radius); background:var(--surface-2);">
+             <label for="newTypeName">Add New Document Type</label>
+             <div style="display:flex; gap:8px; margin-top:5px;">
+               <input id="newTypeName" type="text" placeholder="e.g. Comisa Permit">
+               <button class="btn btn-secondary btn-sm" onclick="addDocType()">Add</button>
+             </div>
+             <div id="typeListArea" style="margin-top:10px; max-height:100px; overflow:auto; font-size:12px;"></div>
+          </div>
+          <div style="margin-top:15px; display:flex; gap:10px; align-items:center;">
+             <input type="file" id="fileInput" aria-label="Upload document file">
+             <button class="btn btn-secondary btn-sm" onclick="performOCR()">🔍 OCR Scan</button>
+          </div>
+          <button class="btn btn-primary" style="margin-top:20px;" onclick="saveDoc()">💾 Save Document</button>
+        </div>
+      </div>
+
+      <div id="inspectTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Vehicle & Odometer</div>
+          <div class="form-grid">
+             <div class="form-group"><label for="insTrk">Vehicle</label><select id="insTrk"></select></div>
+             <div class="form-group"><label for="insOdo">Odometer (KM)</label><input id="insOdo" type="number" placeholder="e.g. 125000"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">1. Initial & External Checks</div>
+          <div class="section-title">Fluids & Engine</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkCoolant">Coolant Level</label><select id="chkCoolant"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkOil">Engine Oil Level</label><select id="chkOil"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkClutch">Clutch Fluid</label><select id="chkClutch"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSteeringFluid">Steering Fluid</label><select id="chkSteeringFluid"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDieselLevel">Diesel Level</label><select id="chkDieselLevel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTankCaps">Tank Caps</label><select id="chkTankCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+          <div class="section-title">Compliance & Body</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkLicenseDisc">License/CoF/Disc</label><select id="chkLicenseDisc"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDamage">Accident Damage</label><select id="chkDamage"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkPaint">Paint Work</label><select id="chkPaint"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">2. Tyres, Wheels & Steering</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkTyrePress">Tyre Pressures</label><select id="chkTyrePress"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkValveCaps">Valve Caps</label><select id="chkValveCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkValveExt">Valve Extensions</label><select id="chkValveExt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkWheelNuts">Wheel Nuts/Ind.</label><select id="chkWheelNuts"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSmoothTyres">Smooth Tyres</label><select id="chkSmoothTyres"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDamagedTyres">Damaged Tyres</label><select id="chkDamagedTyres"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSteeringFunc">Steering Function</label><select id="chkSteeringFunc"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkExhBrake">Exhaust Brake</label><select id="chkExhBrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkRetarder">Retarder Function</label><select id="chkRetarder"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDoorLocks">Door Locks</label><select id="chkDoorLocks"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">3. In-Cab & Ignition</div>
+          <div class="section-title">Ignition On</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkWarnLights">Warning Lights</label><select id="chkWarnLights"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkLowAir">Low Air/Brakes</label><select id="chkLowAir"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkWipers">Wipers Function</label><select id="chkWipers"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkHeater">Heater Function</label><select id="chkHeater"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkAllLights">All Lights/Ind.</label><select id="chkAllLights"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSeatBelt">Seat Belt</label><select id="chkSeatBelt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSeat">Drivers Seat</label><select id="chkSeat"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkMirrors">Mirrors</label><select id="chkMirrors"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkLooseItems">Loose Items</label><select id="chkLooseItems"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkFootbrake">Footbrake</label><select id="chkFootbrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkHandbrake">Handbrake</label><select id="chkHandbrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+          <div class="section-title">Engine Running</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkOilPress">Oil Press Normal</label><select id="chkOilPress"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label for="chkWarnOff">Warn Lights Off</label><select id="chkWarnOff"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label for="chkAirFull">Air Press Full</label><select id="chkAirFull"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">4. Mechanical & Exterior</div>
+          <div class="section-title">Leaks & Security</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkLeakOil">Oil Leaks</label><select id="chkLeakOil"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkLeakWater">Water Leaks</label><select id="chkLeakWater"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkLeakFuel">Fuel Leaks</label><select id="chkLeakFuel"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkFuelTankSec">Fuel Tank Secure</label><select id="chkFuelTankSec"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkAirTanksSec">Air Tanks Secure</label><select id="chkAirTanksSec"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDrainAir">Drain Air Tanks</label><select id="chkDrainAir"><option value="Done">Done</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkAirLeaks">Air Leaks</label><select id="chkAirLeaks"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkBattIso">Batt. Isolator</label><select id="chkBattIso"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+          <div class="section-title">Coupling & Connection</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chk5thLockTrk">5th Wheel Lock Trk</label><select id="chk5thLockTrk"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chk5thLockTrl">5th Wheel Lock Trl</label><select id="chk5thLockTrl"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkLandingLegs">Landing Legs</label><select id="chkLandingLegs"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkAirHose">Air Hose Conn.</label><select id="chkAirHose"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkElecConn">Electrical Conn.</label><select id="chkElecConn"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chk5thPins">5th Wheel Pins</label><select id="chk5thPins"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+          <div class="section-title">Visibility</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkReflectors">Reflectors/Tape</label><select id="chkReflectors"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkChevron">Chevron Board</label><select id="chkChevron"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkPlates">Number Plates</label><select id="chkPlates"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTapeTrk">Refl. Tape Truck</label><select id="chkTapeTrk"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTapeTrl">Refl. Tape Trailer</label><select id="chkTapeTrl"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">5. Equipment & Cargo</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label for="chkStraps">Straps & Ratchets</label><select id="chkStraps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTarps">Tarpaulin</label><select id="chkTarps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkNets">Nets</label><select id="chkNets"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkChains">Chains</label><select id="chkChains"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkBinders">Binders/Saturns</label><select id="chkBinders"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkDunnage">Dunnage</label><select id="chkDunnage"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkRubber">Rubber Strips</label><select id="chkRubber"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkCornerPlates">Corner Plates</label><select id="chkCornerPlates"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkJack">Jack</label><select id="chkJack"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTools">Tools/Spanner</label><select id="chkTools"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkSpareWheel">Spare Wheel</label><select id="chkSpareWheel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkStopBlocks">Stop Blocks</label><select id="chkStopBlocks"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkTriangles">Warning Triangles</label><select id="chkTriangles"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkFireExt">Fire Ext.</label><select id="chkFireExt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkExtExpiry">Ext. Expiry Date</label><select id="chkExtExpiry"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkHazDiamond">Haz Diamond</label><select id="chkHazDiamond"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label for="chkPlacards">Placard Holders</label><select id="chkPlacards"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">6. PPE Checklist</div>
+          <div class="inspect-grid">
+             <div class="inspect-item"><label for="chkOverall">Fire Retard. Overall</label><select id="chkOverall"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkReflectiveVest">Refl. Vest</label><select id="chkReflectiveVest"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkBoots">Safety Boots</label><select id="chkBoots"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkHelmet">Helmet</label><select id="chkHelmet"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkGlasses">Eye Protection</label><select id="chkGlasses"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkEarPlugs">Ear Plugs</label><select id="chkEarPlugs"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkDustMask">Dust Mask</label><select id="chkDustMask"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkLGloves">Gloves</label><select id="chkLGloves"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkHarness">Safety Harness</label><select id="chkHarness"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+             <div class="inspect-item"><label for="chkFirstAid">First Aid Kit</label><select id="chkFirstAid"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Comments & Defects</div>
+          <textarea id="insComments" style="width:100%; height:80px; padding:10px; border:1px solid var(--border-2); border-radius:var(--radius); font-family:inherit;" placeholder="Report any other defects or accident damages here..."></textarea>
+          <button class="btn btn-primary" style="margin-top:20px; width:100%; justify-content:center;" onclick="saveInspect()">🚀 Submit Pre-Trip Checklist</button>
+        </div>
+      </div>
+
+      <div id="driversTab" class="tab-section"><div class="card"><div class="card-title">Drivers Status</div><div class="browse-grid"><div id="drBrowse"></div><div id="drDocs"></div></div></div></div>
+
+      <div id="usersTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Add New System User</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="newUserFirstName">First Name</label><input id="newUserFirstName" type="text" placeholder="John"></div>
+            <div class="form-group"><label for="newUserLastName">Surname</label><input id="newUserLastName" type="text" placeholder="Doe"></div>
+            <div class="form-group"><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="john.doe@example.com"></div>
+            <div class="form-group"><label for="newUserPass">Initial Password</label><input id="newUserPass" type="password" placeholder="Min 6 chars"></div>
+            <div class="form-group">
+              <label for="newUserRole">System Role</label>
+              <select id="newUserRole">
+                <option value="Driver">Driver</option>
+                <option value="Controller">Controller</option>
+                <option value="Manager">Manager</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:20px; width:100%; justify-content:center;" onclick="createNewUser()">👤 Create User Account</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Users</div>
+          <div id="usersListArea">Loading users...</div>
+        </div>
+      </div>
+
+      <div id="trucksTab" class="tab-section"><div class="card"><div class="card-title">Vehicles Status</div><div class="browse-grid"><div id="trBrowse"></div><div id="trDocs"></div></div></div></div>
+      <div id="reportsTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Compliance Reports</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="generatePDF()">📄 Download PDF Report</button>
+            <button class="btn btn-success" onclick="generateExcel()" style="background:var(--success); color:#fff;">📊 Download Excel Sheet</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-functions.js";
+
+const cfg = { apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8", authDomain: "fleet-compliance-app.firebaseapp.com", projectId: "fleet-compliance-app", storageBucket: "fleet-compliance-app.firebasestorage.app", messagingSenderId: "839373661347", appId: "1:839373661347:web:c6704a138194e2b17a0b16", measurementId: "G-E05H3WEPN6" };
+const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), storage = getStorage(app), messaging = getMessaging(app), functions = getFunctions(app);
+
+let profile = null, docs = [];
+
+const isM = () => (profile?.role || "").toLowerCase() === "manager";
+const isD = () => (profile?.role || "").toLowerCase() === "driver";
+const getName = () => profile?.fullName || auth.currentUser?.email || "User";
+function setLoad(s, t = "Loading...") {
+  const el = document.getElementById("loading-overlay"); if (el) el.classList.toggle("hidden", !s);
+  const txt = document.getElementById("loading-text"); if (txt) txt.textContent = t;
+}
+function toast(m, t) {
+  const w = document.getElementById("toast-wrap"), e = document.createElement("div"); e.className = `toast show ${t}`; e.textContent = m;
+  w.appendChild(e); setTimeout(() => { e.classList.remove("show"); setTimeout(() => e.remove(), 300); }, 3000);
+}
+
+function getStatus(d) {
+  if (!d) return { text: "No Date", color: "#999", class: "" };
+  const diff = Math.ceil((new Date(d) - new Date().setHours(0,0,0,0)) / 86400000);
+  if (diff < 0) return { text: "EXPIRED", color: "var(--danger)", class: "expired", urgent: true };
+  if (diff === 0) return { text: "DUE TODAY", color: "var(--warning)", class: "warning", urgent: true };
+  if (diff <= 30) return { text: diff + " days", color: "goldenrod", class: "warning", urgent: false };
+  return { text: "Valid", color: "var(--success)", class: "ok", urgent: false };
+}
+
+async function loadData() {
+  setLoad(true, "Syncing Secure Data...");
+  const me = getName();
+  const isDriverUser = isD();
+
+  try {
+    // 1. DATA FETCH: Drivers ONLY load their records; Managers load ALL
+    let q = isDriverUser ? query(collection(db, "documents"), where("ownerName", "==", me)) : collection(db, "documents");
+    const docSnap = await getDocs(q);
+    docs = []; docSnap.forEach(d => {
+       const data = d.data();
+       // Double-Lock: Extra safety for drivers on the device
+       if (!isDriverUser || data.ownerName === me) docs.push({ id: d.id, ...data });
+    });
+
+    // 2. Fetch Helper Lists
+    const drSnap = await getDocs(collection(db, "drivers")), trSnap = await getDocs(collection(db, "trucks")), dtSnap = await getDocs(collection(db, "documentTypes"));
+
+    const drs = drSnap.docs.map(d=>d.data().name).filter(n => !isDriverUser || n === me).sort();
+    const trs = trSnap.docs.map(d=>d.data().fleetNumber).sort();
+    const dts = dtSnap.docs.map(d=>d.data().name).sort();
+
+    fillSelect("selDrv", drs);
+    fillSelect("selTrk", isDriverUser ? [] : trs);
+    fillSelect("insTrk", trs);
+    fillSelect("selType", dts);
+
+    if (isDriverUser) {
+      const ot = document.getElementById("ownerType"); if (ot) { ot.value = "Driver"; ot.disabled = true; }
+      const sd = document.getElementById("selDrv"); if (sd) { sd.value = me; sd.disabled = true; }
+      updateForm();
+    }
+
+    renderUI();
+  } catch (e) { console.error(e); toast("Connection Error: " + e.message, "error"); } finally { setLoad(false); }
+}
+
+window.resetDocForm = () => {
+  if (!isD()) {
+    document.getElementById("ownerType").value = "Driver";
+    document.getElementById("selDrv").value = "";
+    document.getElementById("selTrk").value = "";
+  }
+  document.getElementById("selType").value = "";
+  document.getElementById("expDate").value = "";
+  document.getElementById("fileInput").value = "";
+  updateForm();
+};
+
+async function loadUsersList() {
+  if (isD()) return;
+  const area = document.getElementById("usersListArea");
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    area.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      return `<div class="browse-item" style="margin-bottom:8px;">
+        <div><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>
+      </div>`;
+    }).join("");
+  } catch (e) { area.innerHTML = "Error loading users."; }
+}
+
+function renderUI() {
+  const isDriverUser = isD();
+  document.getElementById("mgrStats").classList.toggle("hidden", isDriverUser);
+  document.getElementById("dashTitle").textContent = isDriverUser ? "My Compliance Alerts" : "Fleet Compliance Alerts";
+
+  if (!isDriverUser) {
+    document.getElementById("statTotal").textContent = docs.length;
+    document.getElementById("statExpired").textContent = docs.filter(d => getStatus(d.date).text === "EXPIRED").length;
+    document.getElementById("stat30").textContent = docs.filter(d => getStatus(d.date).text.includes("days")).length;
+    renderBrowse();
+    loadUsersList();
+  }
+
+  renderDashList(docs.filter(d => getStatus(d.date).urgent));
+  document.getElementById("archiveList").innerHTML = docs.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date} · ${d.ownerName}</small><br><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">${d.fileUrl ? `<button class="btn btn-secondary btn-sm" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="shareWA('${d.id}')">Share</button>${!isD() ? `<button class="btn btn-ghost btn-sm" style="color:var(--brand)" onclick="editDoc('${d.id}')">✏️ Edit</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteDocItem('${d.id}')">🗑️ Delete</button>` : ''}</div></div>`).join("");
+}
+
+window.filterDash = (mode) => {
+  let list = [];
+  const title = document.getElementById("dashTitle");
+  if (mode === 'all') { list = docs; title.textContent = "All Fleet Documents"; }
+  else if (mode === 'expired') { list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); title.textContent = "Expired Documents"; }
+  else if (mode === 'due') { list = docs.filter(d => getStatus(d.date).text.includes("days")); title.textContent = "Due in 30 Days"; }
+  renderDashList(list);
+};
+
+function renderDashList(list) {
+  const area = document.getElementById("urgentList");
+  area.innerHTML = list.length ? list.map(d => {
+    const s = getStatus(d.date);
+    return `<div class="doc-item"><div class="doc-title-line" style="font-weight:600;">${d.documentType} - ${d.ownerName}</div><div class="doc-meta"><span class="pill ${s.class}">${s.text}</span><span class="pill">${d.date}</span></div>${d.fileUrl ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`;
+  }).join("") : "<div style='text-align:center; padding:20px; color:#666;'>✅ No matching records.</div>";
+}
+
+function renderBrowse() {
+  if (isD()) return;
+  const dbBox = document.getElementById("drBrowse"), tbBox = document.getElementById("trBrowse");
+  getDocs(collection(db, "drivers")).then(snap => {
+    dbBox.innerHTML = snap.docs.map(i => {
+      const s = getFleetStatus("Driver", i.data().name);
+      return `<div class="browse-item" onclick="viewDocs('Driver','${i.data().name}')"><span>${i.data().name}</span><span class="status-dot ${s}"></span></div>`;
+    }).join("");
+  });
+  getDocs(collection(db, "trucks")).then(snap => {
+    tbBox.innerHTML = snap.docs.map(i => {
+      const s = getFleetStatus("Truck", i.data().fleetNumber);
+      return `<div class="browse-item" onclick="viewDocs('Truck','${i.data().fleetNumber}')"><span>${i.data().fleetNumber}</span><span class="status-dot ${s}"></span></div>`;
+    }).join("");
+  });
+}
+
+function getFleetStatus(type, name) {
+  const ownerDocs = docs.filter(d => d.ownerType === type && d.ownerName === name);
+  if (!ownerDocs.length) return "";
+  const stats = ownerDocs.map(d => getStatus(d.date));
+  if (stats.some(s => s.text === "EXPIRED")) return "status-danger";
+  if (stats.some(s => s.urgent)) return "status-warning";
+  return "status-ok";
+}
+
+window.viewDocs = (type, name) => {
+  const list = docs.filter(d => d.ownerType === type && d.ownerName === name);
+  const box = type === "Driver" ? "drDocs" : "trDocs";
+  const target = document.getElementById(box);
+  if (target) target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date}) ${d.fileUrl ? `<br><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}</div>`).join("") : "No records.";
+};
+
+function fillSelect(id, vals, p = "Select...") {
+  const el = document.getElementById(id); if (!el) return;
+  el.innerHTML = `<option value="">${p}</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
+window.showTab = (id, btn) => {
+  document.querySelectorAll(".tab-section").forEach(el => el.style.display = "none");
+  const target = document.getElementById(id); if (target) target.style.display = "block";
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+};
+
+onAuthStateChanged(auth, async (u) => {
+  if (u) {
+    const snap = await getDoc(doc(db, "users", u.uid));
+    profile = snap.exists() ? snap.data() : { role: "Driver", fullName: u.displayName || u.email };
+    document.getElementById("authArea").classList.add("hidden");
+    document.getElementById("appArea").classList.remove("hidden");
+    document.getElementById("userFull").textContent = getName();
+    const avatar = document.getElementById("avatar"); if (avatar) avatar.textContent = getName()[0].toUpperCase();
+    document.getElementById("mgrOnlyMenu").classList.toggle("hidden", isD());
+    loadData(); registerPush();
+  } else {
+    document.getElementById("authArea").classList.remove("hidden");
+    document.getElementById("appArea").classList.add("hidden");
+    setLoad(false);
+  }
+});
+
+async function registerPush() {
+  const Cap = window.Capacitor; if (!Cap || !Cap.isNativePlatform()) return;
+  const { PushNotifications } = Cap.Plugins; if (!PushNotifications) return;
+  const perm = await PushNotifications.requestPermissions();
+  if (perm.receive === "granted") {
+    await PushNotifications.register();
+    PushNotifications.addListener("registration", (t) => {
+      updateDoc(doc(db, "users", auth.currentUser.uid), { fcmToken: t.value });
+    });
+  }
+}
+
+// Attach functions to window for global access from HTML
+window.loginUser = async () => {
+  const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value;
+  try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed"); setLoad(false); }
+};
+window.logoutUser = () => signOut(auth);
+
+window.updateForm = () => {
+  const v = document.getElementById("ownerType").value;
+  document.getElementById("drvGrp").classList.toggle("hidden", v !== "Driver");
+  document.getElementById("trkGrp").classList.toggle("hidden", v !== "Truck" && v !== "Trailer");
+};
+
+window.createNewUser = async () => {
+  const name = document.getElementById("newUserFirstName").value;
+  const surname = document.getElementById("newUserLastName").value;
+  const email = document.getElementById("newUserEmail").value;
+  const pass = document.getElementById("newUserPass").value;
+  const role = document.getElementById("newUserRole").value;
+
+  if (!name || !surname || !email || !pass) return alert("All fields required");
+
+  setLoad(true, "Creating Employee Account...");
+  try {
+    const createUserFunc = httpsCallable(functions, 'createAppUser');
+    const result = await createUserFunc({ name, surname, email, password: pass, role });
+    alert("User Created Successfully!");
+    // Clear form
+    document.getElementById("newUserFirstName").value = "";
+    document.getElementById("newUserLastName").value = "";
+    document.getElementById("newUserEmail").value = "";
+    document.getElementById("newUserPass").value = "";
+    loadUsersList();
+  } catch (e) {
+    console.error(e);
+    alert("Error creating user: " + e.message);
+  } finally {
+    setLoad(false);
+  }
+};
+
+window.saveDoc = async () => {
+  if (!profile) return alert("Profile loading, please wait...");
+  const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
+  const drv = document.getElementById("selDrv").value, trk = document.getElementById("selTrk").value;
+  const on = isD() ? getName() : (ot === 'Driver' ? drv : trk);
+  const em = "docs@transmodalgroup.co.za";
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!on || !dt || !ed) return alert("Please select a " + (ot === 'Driver' ? 'Driver' : 'Vehicle') + ", Document Type, and Expiry Date.");
+  setLoad(true, "Saving Document...");
+  try {
+    let fileUrl = "";
+    if (file) {
+      const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
+      const uploadResult = await uploadBytes(storageRef, file);
+      fileUrl = await getDownloadURL(uploadResult.ref);
+    }
+
+    await addDoc(collection(db, "documents"), {
+      ownerType: ot,
+      ownerName: on,
+      documentType: dt,
+      date: ed,
+      email: em,
+      fileUrl: fileUrl,
+      created: new Date().toISOString(),
+      addedBy: auth.currentUser.uid
+    });
+    alert("Saved Successfully"); resetDocForm(); loadData();
+  } catch (e) { console.error(e); alert("Error saving document: " + e.message); } finally { setLoad(false); }
+};
+
+window.saveInspect = async () => {
+  const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
+  if (!t || !o) return alert("Required: Vehicle and Odometer");
+
+  const results = {
+    // 1. Initial
+    coolant: document.getElementById("chkCoolant").value,
+    oil: document.getElementById("chkOil").value,
+    clutch: document.getElementById("chkClutch").value,
+    steeringFluid: document.getElementById("chkSteeringFluid").value,
+    dieselLevel: document.getElementById("chkDieselLevel").value,
+    tankCaps: document.getElementById("chkTankCaps").value,
+    licenseDisc: document.getElementById("chkLicenseDisc").value,
+    damage: document.getElementById("chkDamage").value,
+    paint: document.getElementById("chkPaint").value,
+    // 2. Tyres/Wheels
+    tyrePress: document.getElementById("chkTyrePress").value,
+    valveCaps: document.getElementById("chkValveCaps").value,
+    valveExt: document.getElementById("chkValveExt").value,
+    wheelNuts: document.getElementById("chkWheelNuts").value,
+    smoothTyres: document.getElementById("chkSmoothTyres").value,
+    damagedTyres: document.getElementById("chkDamagedTyres").value,
+    steeringFunc: document.getElementById("chkSteeringFunc").value,
+    exhBrake: document.getElementById("chkExhBrake").value,
+    retarder: document.getElementById("chkRetarder").value,
+    doorLocks: document.getElementById("chkDoorLocks").value,
+    // 3. In-Cab
+    warnLights: document.getElementById("chkWarnLights").value,
+    lowAir: document.getElementById("chkLowAir").value,
+    wipers: document.getElementById("chkWipers").value,
+    heater: document.getElementById("chkHeater").value,
+    allLights: document.getElementById("chkAllLights").value,
+    seatBelt: document.getElementById("chkSeatBelt").value,
+    seat: document.getElementById("chkSeat").value,
+    mirrors: document.getElementById("chkMirrors").value,
+    looseItems: document.getElementById("chkLooseItems").value,
+    footbrake: document.getElementById("chkFootbrake").value,
+    handbrake: document.getElementById("chkHandbrake").value,
+    oilPressNormal: document.getElementById("chkOilPress").value,
+    warnLightsOff: document.getElementById("chkWarnOff").value,
+    airPressFull: document.getElementById("chkAirFull").value,
+    // 4. Mechanical/Leaks
+    leakOil: document.getElementById("chkLeakOil").value,
+    leakWater: document.getElementById("chkLeakWater").value,
+    leakFuel: document.getElementById("chkLeakFuel").value,
+    fuelTankSec: document.getElementById("chkFuelTankSec").value,
+    airTanksSec: document.getElementById("chkAirTanksSec").value,
+    drainAir: document.getElementById("chkDrainAir").value,
+    airLeaks: document.getElementById("chkAirLeaks").value,
+    battIso: document.getElementById("chkBattIso").value,
+    lockTrk: document.getElementById("chk5thLockTrk").value,
+    lockTrl: document.getElementById("chk5thLockTrl").value,
+    landingLegs: document.getElementById("chkLandingLegs").value,
+    airHose: document.getElementById("chkAirHose").value,
+    elecConn: document.getElementById("chkElecConn").value,
+    pins5th: document.getElementById("chk5thPins").value,
+    reflectors: document.getElementById("chkReflectors").value,
+    chevron: document.getElementById("chkChevron").value,
+    plates: document.getElementById("chkPlates").value,
+    tapeTrk: document.getElementById("chkTapeTrk").value,
+    tapeTrl: document.getElementById("chkTapeTrl").value,
+    // 5. Equipment
+    straps: document.getElementById("chkStraps").value,
+    tarps: document.getElementById("chkTarps").value,
+    nets: document.getElementById("chkNets").value,
+    chains: document.getElementById("chkChains").value,
+    binders: document.getElementById("chkBinders").value,
+    dunnage: document.getElementById("chkDunnage").value,
+    rubber: document.getElementById("chkRubber").value,
+    cornerPlates: document.getElementById("chkCornerPlates").value,
+    jack: document.getElementById("chkJack").value,
+    tools: document.getElementById("chkTools").value,
+    spareWheel: document.getElementById("chkSpareWheel").value,
+    stopBlocks: document.getElementById("chkStopBlocks").value,
+    triangles: document.getElementById("chkTriangles").value,
+    fireExt: document.getElementById("chkFireExt").value,
+    extExpiry: document.getElementById("chkExtExpiry").value,
+    hazDiamond: document.getElementById("chkHazDiamond").value,
+    placards: document.getElementById("chkPlacards").value,
+    // 6. PPE
+    overall: document.getElementById("chkOverall").value,
+    vest: document.getElementById("chkReflectiveVest").value,
+    boots: document.getElementById("chkBoots").value,
+    helmet: document.getElementById("chkHelmet").value,
+    glasses: document.getElementById("chkGlasses").value,
+    earPlugs: document.getElementById("chkEarPlugs").value,
+    dustMask: document.getElementById("chkDustMask").value,
+    gloves: document.getElementById("chkLGloves").value,
+    harness: document.getElementById("chkHarness").value,
+    firstAid: document.getElementById("chkFirstAid").value,
+    comments: document.getElementById("insComments").value
+  };
+
+  setLoad(true, "Submitting...");
+  try {
+    await addDoc(collection(db, "inspections"), {
+      truck: t,
+      odo: o,
+      checks: results,
+      driver: getName(),
+      timestamp: new Date().toISOString()
+    });
+    alert("Checklist Submitted Successfully");
+    loadData();
+    showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) {
+    console.error(e);
+    alert("Error submitting inspection: " + e.message);
+  } finally {
+    setLoad(false);
+  }
+};
+
+window.shareWA = (id) => {
+  const d = docs.find(x => x.id === id); if (!d) return;
+  const txt = `*PermitSphere Reminder*\n\nOwner: ${d.ownerName}\nDoc: ${d.documentType}\nExpiry: ${d.date}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+};
+
+window.performOCR = async () => {
+  const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select image");
+  setLoad(true, "OCR Scanning...");
+  try {
+    const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f);
+    const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/);
+    if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0];
+    await w.terminate(); toast("OCR Done", "success");
+  } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+};
+
+window.manageDocTypes = async () => {
+  const area = document.getElementById("typeListArea");
+  const mgr = document.getElementById("typeManager");
+  mgr.classList.toggle("hidden");
+  if (mgr.classList.contains("hidden")) return;
+
+  const snap = await getDocs(collection(db, "documentTypes"));
+  area.innerHTML = snap.docs.map(d => `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding:4px; border-bottom:1px solid #eee;">
+      <span>${d.data().name}</span>
+      <button onclick="deleteDocType('${d.id}')" style="border:none; background:none; color:var(--danger); cursor:pointer;">✖</button>
+    </div>
+  `).join("");
+};
+
+window.addDocType = async () => {
+  const name = document.getElementById("newTypeName").value;
+  if (!name) return alert("Enter a name");
+  setLoad(true, "Adding Document Type...");
+  try {
+    await addDoc(collection(db, "documentTypes"), { name });
+    document.getElementById("newTypeName").value = "";
+    alert("Type Added Successfully!");
+    await loadData();
+    await manageDocTypes();
+  } catch (e) {
+    console.error(e);
+    alert("Error adding type: " + e.message);
+  } finally {
+    setLoad(false);
+  }
+};
+
+window.deleteDocType = async (id) => {
+  if (!confirm("Remove this document type?")) return;
+  setLoad(true, "Removing Type...");
+  try {
+    await deleteDoc(doc(db, "documentTypes", id));
+    alert("Type Removed Successfully!");
+    await loadData();
+    await manageDocTypes();
+  } catch (e) {
+    console.error(e);
+    alert("Error deleting type: " + e.message);
+  } finally {
+    setLoad(false);
+  }
+};
+
+window.editDoc = (id) => {
+  const d = docs.find(x => x.id === id); if (!d) return;
+  document.getElementById("ownerType").value = d.ownerType;
+  updateForm();
+  if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName;
+  else document.getElementById("selTrk").value = d.ownerName;
+  document.getElementById("selType").value = d.documentType;
+  document.getElementById("expDate").value = d.date;
+  showTab('addDocTab', null);
+  alert("Editing: " + d.documentType + ". Change fields and click Save to create/update.");
+};
+
+window.deleteDocItem = async (id) => {
+  if (!confirm("Permanently delete this document record?")) return;
+  setLoad(true, "Deleting...");
+  try {
+    await deleteDoc(doc(db, "documents", id));
+    alert("Deleted"); loadData();
+  } catch (e) { alert("Error deleting: " + e.message); } finally { setLoad(false); }
+};
+
+window.generatePDF = () => {
+  const { jsPDF: Doc } = window.jspdf; const doc = new Doc();
+  doc.setFontSize(18); doc.text("Fleet Compliance Report", 14, 20);
+  doc.setFontSize(10); doc.text("Generated on: " + new Date().toLocaleString(), 14, 28);
+
+  let y = 40;
+  doc.setFont(undefined, 'bold');
+  doc.text("Owner", 14, y); doc.text("Document Type", 60, y); doc.text("Expiry Date", 120, y); doc.text("Status", 160, y);
+  doc.setFont(undefined, 'normal');
+  y += 8;
+
+  docs.forEach(d => {
+    if (y > 280) { doc.addPage(); y = 20; }
+    const s = getStatus(d.date).text;
+    doc.text(`${d.ownerName}`, 14, y);
+    doc.text(`${d.documentType}`, 60, y);
+    doc.text(`${d.date}`, 120, y);
+    doc.text(`${s}`, 160, y);
+    y += 7;
+  });
+  doc.save("PermitSphere_Report.pdf");
+};
+
+window.generateExcel = () => {
+  const data = docs.map(d => ({
+    "Belongs To": d.ownerType,
+    "Name/Fleet #": d.ownerName,
+    "Document Type": d.documentType,
+    "Expiry Date": d.date,
+    "Status": getStatus(d.date).text,
+    "File URL": d.fileUrl || "No File"
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Compliance");
+  XLSX.writeFile(wb, "PermitSphere_Data.xlsx");
+};
+</script>
+</body>
+</html>

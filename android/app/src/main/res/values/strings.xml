@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PermitSphere</string>
+    <string name="title_activity_main">PermitSphere</string>
+    <string name="package_name">com.permitsphere.app</string>
+    <string name="custom_url_scheme">com.permitsphere.app</string>
+</resources>

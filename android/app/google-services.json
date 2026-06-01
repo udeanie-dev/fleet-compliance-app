@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "839373661347",
+    "project_id": "fleet-compliance-app",
+    "storage_bucket": "fleet-compliance-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839373661347:android:c6b9d265276201a27a0b16",
+        "android_client_info": {
+          "package_name": "com.permitsphere.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4y8WX41XeNEcCjzLFqqHFDHerTibvlWw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user has a valid profile
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper: Check if user is a Manager or Controller
+    function isStaff() {
+      let role = getUserData().role;
+      return role == 'Manager' || role == 'Controller';
+    }
+
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && isStaff();
+    }
+
+    // Documents collection
+    match /documents/{docId} {
+      // Drivers can read their own documents; Staff can read all
+      allow read: if request.auth != null && (isStaff() || resource.data.ownerName == getUserData().fullName);
+
+      // Anyone authenticated can create (we validate fields in the app, but rules could be stricter)
+      allow create: if request.auth != null;
+
+      // Only staff can update or delete
+      allow update, delete: if request.auth != null && isStaff();
+    }
+
+    // Helper collections (read-only for all auth users)
+    match /drivers/{id} { allow read: if request.auth != null; allow write: if isStaff(); }
+    match /trucks/{id} { allow read: if request.auth != null; allow write: if isStaff(); }
+    match /documentTypes/{id} { allow read: if request.auth != null; allow write: if isStaff(); }
+
+    // Inspections
+    match /inspections/{id} {
+       allow create: if request.auth != null;
+       allow read: if request.auth != null && (isStaff() || resource.data.driver == getUserData().fullName);
+    }
+  }
+}
