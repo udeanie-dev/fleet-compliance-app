@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PermitSphere v5</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #5A2D82; --brand-dark: #3e1d5e; --brand-light: #f3eef9;
+      --accent: #149B91; --accent-light: #e6f7f6;
+      --danger: #c0392b; --danger-light: #fdf0ef;
+      --warning: #d97706; --warning-light: #fffbeb;
+      --success: #16a34a; --success-light: #f0fdf4;
+      --text: #1a1a2e; --text-2: #4b5563; --text-3: #9ca3af;
+      --border: #e5e7eb; --border-2: #d1d5db;
+      --bg: #f5f4f0; --surface: #ffffff; --surface-2: #fafaf9;
+      --radius: 12px; --radius-lg: 18px;
+      --shadow: 0 4px 12px rgba(0,0,0,.05);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,.10);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    .header { background: var(--brand); padding: env(safe-area-inset-top, 0) 16px 10px; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(90,45,130,.25); }
+    .header-top { display: flex; width: 100%; align-items: center; justify-content: space-between; height: 44px; }
+    .header-brand { color: #fff; font-weight: 700; font-size: 22px; }
+    .user-chip { background: rgba(255,255,255,.15); border-radius: 99px; padding: 4px 12px; display: flex; align-items: center; gap: 8px; color: #fff; }
+    .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+    .btn-logout { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 7px 16px; border-radius: 99px; cursor: pointer; }
+    .app-layout { display: flex; min-height: calc(100vh - 74px); }
+    .sidebar { width: 230px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; position: sticky; top: 74px; height: calc(100vh - 74px); overflow-y: auto; }
+    .main { flex: 1; padding: 24px; overflow: auto; }
+    .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; padding: 12px 16px; font-size: 14px; color: var(--text-2); cursor: pointer; text-align: left; border-left: 3px solid transparent; transition: 0.2s; }
+    .nav-btn:hover { background: var(--brand-light); color: var(--brand); }
+    .nav-btn.active { background: var(--brand-light); color: var(--brand); font-weight: 600; border-left-color: var(--brand); }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); cursor: pointer; }
+    .stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; }
+    .stat-num { font-size: 28px; font-weight: 700; }
+    .card { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow); }
+    .card-title { font-size: 17px; font-weight: 600; margin-bottom: 18px; }
+    .doc-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; background: var(--surface-2); }
+    .doc-meta { display: flex; gap: 8px; margin-top: 8px; }
+    .pill { padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; background: #eee; }
+    .pill.expired { background: #fee2e2; color: #b91c1c; }
+    .pill.ok { background: #dcfce7; color: #15803d; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-secondary { background: var(--accent-light); color: var(--accent); }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .tab-section { display: none; }
+    .inspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .inspect-item { display: flex; flex-direction: column; gap: 3px; }
+    .inspect-item label { font-size: 11px; color: #666; }
+    #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 15px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+    @media (max-width: 768px) {
+      .app-layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: static; display: grid; grid-template-columns: 1fr 1fr; padding: 8px; gap: 5px; border-bottom: 1px solid var(--border); }
+      .nav-btn { padding: 8px; border: 1px solid #eee; border-radius: 8px; justify-content: center; border-left: none; }
+      .nav-btn.active { border-color: var(--brand); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div id="loading-text">Starting PermitSphere...</div>
+</div>
+
+<div id="authArea" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div style="text-align:center;margin-bottom:20px;"><h2 style="color:var(--brand)">PermitSphere</h2><p>Fleet & Compliance</p></div>
+    <div class="form-group"><label>Email</label><input id="loginEmail" type="email"></div>
+    <div class="form-group"><label>Password</label><input id="loginPassword" type="password"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="loginUser()">Sign In</button>
+  </div>
+</div>
+
+<div id="appArea" class="hidden">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">PermitSphere</div>
+      <div class="user-chip"><div class="user-avatar" id="avatar">?</div><span id="userFull">User</span></div>
+      <button class="btn-logout" onclick="logoutUser()">Logout</button>
+    </div>
+  </div>
+  <div class="app-layout">
+    <nav class="sidebar" id="mainNav">
+      <button class="nav-btn active" onclick="showTab('dashboardTab', this)">📈 Dashboard</button>
+      <button class="nav-btn" onclick="showTab('addDocTab', this)">📝 Add Record</button>
+      <button class="nav-btn" onclick="showTab('allDocsTab', this)">📄 All Docs</button>
+      <button class="nav-btn" onclick="showTab('inspectTab', this)">📋 Daily Check</button>
+      <div id="mgrMenu" class="hidden">
+        <button class="nav-btn" onclick="showTab('usersTab', this)">👥 Users</button>
+        <button class="nav-btn" onclick="showTab('browseTab', this)">🚚 Fleet Status</button>
+        <button class="nav-btn" onclick="showTab('reportsTab', this)">📊 Reports</button>
+      </div>
+    </nav>
+    <main class="main">
+      <div id="dashboardTab" class="tab-section" style="display:block;">
+        <div id="mgrStats" class="stat-grid hidden">
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-num" id="statTotal">0</div></div>
+          <div class="stat-card"><div class="stat-label" style="color:red">Expired</div><div class="stat-num" id="statExpired">0</div></div>
+          <div class="stat-card"><div class="stat-label" style="color:orange">Due 30d</div><div class="stat-num" id="stat30">0</div></div>
+        </div>
+        <div class="card"><div class="card-title">Alerts</div><div id="urgentList"></div></div>
+      </div>
+      <div id="addDocTab" class="tab-section">
+        <div class="card"><div class="card-title">Upload Record</div>
+          <div class="form-group"><label>Owner Type</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
+          <div id="drvGrp" class="form-group"><label>Driver Name</label><select id="selDrv"></select></div>
+          <div id="trkGrp" class="form-group hidden"><label>Truck Fleet #</label><select id="selTrk"></select></div>
+          <div id="trlGrp" class="form-group hidden"><label>Trailer Fleet #</label><select id="selTrl"></select></div>
+          <div class="form-group"><label>Doc Type</label><select id="selType"></select></div>
+          <div class="form-group"><label>Expiry Date</label><input id="expDate" type="date"></div>
+          <button class="btn btn-primary" onclick="saveDoc()">💾 Save Record</button>
+        </div>
+      </div>
+      <div id="allDocsTab" class="tab-section"><div class="card"><div class="card-title">Archive</div><div id="archiveList"></div></div></div>
+      <div id="inspectTab" class="tab-section">
+        <div class="card"><div class="card-title">New Inspection</div>
+          <div class="form-group"><label>Vehicle</label><select id="insTrk"></select></div>
+          <div class="form-group"><label>Odometer</label><input id="insOdo" type="number"></div>
+          <div class="inspect-grid" id="insFields"></div>
+          <button class="btn btn-primary" style="margin-top:20px;width:100%" onclick="saveInspect()">🚀 Submit Inspection</button>
+        </div>
+      </div>
+      <div id="usersTab" class="tab-section"><div class="card"><div class="card-title">System Users</div><div id="usersList"></div></div></div>
+      <div id="browseTab" class="tab-section"><div class="card"><div class="card-title">Fleet Browser</div><div id="fleetBrowse"></div></div></div>
+      <div id="reportsTab" class="tab-section">
+        <div class="card"><div class="card-title">Downloads</div>
+          <button class="btn btn-secondary" onclick="generatePDF()">📄 PDF Report</button>
+          <button class="btn btn-success" onclick="generateExcel()">📊 Excel Sheet</button>
+          <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+          <button class="btn btn-secondary" onclick="generateInspectionPDF()">📋 Inspection PDF</button>
+          <button class="btn btn-success" style="margin-top:10px" onclick="generateInspectionExcel()">📊 Inspection Excel</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const cfg = {
+  apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8",
+  authDomain: "fleet-compliance-app.firebaseapp.com",
+  projectId: "fleet-compliance-app",
+  storageBucket: "fleet-compliance-app.firebasestorage.app",
+  messagingSenderId: "839373661347",
+  appId: "1:839373661347:web:c6704a138194e2b17a0b16"
+};
+const app = initializeApp(cfg);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let profile = null;
+let docs = [];
+
+function setLoad(show, text = "Loading...") {
+  document.getElementById("loading-overlay").classList.toggle("hidden", !show);
+  document.getElementById("loading-text").textContent = text;
+}
+
+function toast(msg, type = "") {
+  const el = document.createElement("div");
+  el.style = "background:#333;color:#fff;padding:12px 20px;border-radius:8px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.2)";
+  if(type === "error") el.style.background = "#b91c1c";
+  if(type === "success") el.style.background = "#15803d";
+  el.textContent = msg;
+  document.getElementById("toast-wrap").appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+window.showTab = (id, btn) => {
+  document.querySelectorAll(".tab-section").forEach(t => t.style.display = "none");
+  document.getElementById(id).style.display = "block";
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+};
+
+window.updateForm = () => {
+  const v = document.getElementById("ownerType").value;
+  document.getElementById("drvGrp").classList.toggle("hidden", v !== "Driver");
+  document.getElementById("trkGrp").classList.toggle("hidden", v !== "Truck");
+  document.getElementById("trlGrp").classList.toggle("hidden", v !== "Trailer");
+};
+
+function getStatus(dateStr) {
+  if(!dateStr) return { text: "No Date", cls: "" };
+  const diff = Math.ceil((new Date(dateStr) - new Date().setHours(0,0,0,0)) / 86400000);
+  if(diff < 0) return { text: "EXPIRED", cls: "expired" };
+  if(diff <= 30) return { text: diff + " days", cls: "expired" };
+  return { text: "OK", cls: "ok" };
+}
+
+async function loadData() {
+  setLoad(true, "Fetching Data...");
+  try {
+    const snap = await getDocs(collection(db, "documents"));
+    docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const [drS, trS, trlS, dtS] = await Promise.all([
+      getDocs(collection(db, "drivers")),
+      getDocs(collection(db, "trucks")),
+      getDocs(collection(db, "trailers")),
+      getDocs(collection(db, "documentTypes"))
+    ]);
+
+    fillSelect("selDrv", drS.docs.map(d => d.data().name));
+    fillSelect("selTrk", trS.docs.map(d => d.data().fleetNumber));
+    fillSelect("selTrl", trlS.docs.map(d => d.data().fleetNumber));
+    fillSelect("insTrk", [...trS.docs.map(d => d.data().fleetNumber), ...trlS.docs.map(d => d.data().fleetNumber)]);
+    fillSelect("selType", dtS.docs.map(d => d.data().name));
+
+    renderUI();
+  } catch (e) { toast(e.message, "error"); }
+  setLoad(false);
+}
+
+function fillSelect(id, list) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = '<option value="">Select...</option>' + list.filter(Boolean).sort().map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
+function renderUI() {
+  const isMgr = isMC();
+  document.getElementById("mgrMenu").classList.toggle("hidden", !isMgr);
+  document.getElementById("mgrStats").classList.toggle("hidden", !isMgr);
+
+  if(isMgr) {
+    document.getElementById("statTotal").textContent = docs.length;
+    document.getElementById("statExpired").textContent = docs.filter(d => getStatus(d.date).text === "EXPIRED").length;
+    document.getElementById("stat30").textContent = docs.filter(d => !isNaN(parseInt(getStatus(d.date).text))).length;
+  }
+
+  const urgent = docs.filter(d => getStatus(d.date).cls === "expired");
+  document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `
+    <div class="doc-item"><strong>${d.documentType}</strong> - ${d.ownerName} <span class="pill expired">${getStatus(d.date).text}</span></div>
+  `).join("") : "✅ All documents valid";
+
+  document.getElementById("archiveList").innerHTML = docs.map(d => `
+    <div class="doc-item">
+      <strong>${d.documentType}</strong> (${d.ownerName})
+      <div class="doc-meta"><span class="pill ${getStatus(d.date).cls}">${d.date}</span></div>
+    </div>
+  `).join("");
+}
+
+window.saveDoc = async () => {
+  const ot = document.getElementById("ownerType").value;
+  const dt = document.getElementById("selType").value;
+  const ed = document.getElementById("expDate").value;
+  let name = "";
+  if(ot === "Driver") name = document.getElementById("selDrv").value;
+  else if(ot === "Truck") name = document.getElementById("selTrk").value;
+  else name = document.getElementById("selTrl").value;
+
+  if(!name || !dt || !ed) return alert("All fields required");
+  setLoad(true, "Saving...");
+  try {
+    await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: name, documentType: dt, date: ed, created: new Date().toISOString() });
+    toast("Saved successfully", "success");
+    await loadData();
+    showTab("allDocsTab");
+  } catch (e) { toast(e.message, "error"); }
+  setLoad(false);
+};
+
+window.saveInspect = async () => {
+  const t = document.getElementById("insTrk").value;
+  const o = document.getElementById("insOdo").value;
+  if(!t || !o) return alert("Vehicle & Odometer required");
+  setLoad(true);
+  try {
+    const checks = {};
+    document.querySelectorAll("#insFields select").forEach(s => { checks[s.id] = s.value; });
+    await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks, driver: getName(), timestamp: new Date().toISOString() });
+    toast("Checklist submitted", "success");
+    showTab("dashboardTab");
+  } catch (e) { toast(e.message, "error"); }
+  setLoad(false);
+};
+
+window.generatePDF = () => {
+  const Lib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+  if(!Lib) return alert("PDF Library Error");
+  const p = new Lib();
+  p.text("PermitSphere Compliance Report", 14, 20);
+  let y = 30;
+  docs.forEach(d => {
+    p.text(`${d.ownerName} | ${d.documentType} | Exp: ${d.date}`, 14, y);
+    y += 10; if(y > 280) { p.addPage(); y = 20; }
+  });
+  p.save("Fleet_Report.pdf");
+};
+
+window.generateExcel = () => {
+  if(!window.XLSX) return alert("Excel Library Error");
+  const data = docs.map(d => ({ Owner: d.ownerName, Type: d.documentType, Expiry: d.date }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Compliance");
+  XLSX.writeFile(wb, "Fleet_Data.xlsx");
+};
+
+window.generateInspectionPDF = async () => {
+  setLoad(true, "Generating PDF...");
+  try {
+    const Lib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+    if(!Lib) throw new Error("PDF Library Error");
+    const snap = await getDocs(collection(db, "inspections"));
+    const data = snap.docs.map(d => d.data());
+    const p = new Lib();
+    p.text("Daily Inspection Logs", 14, 20);
+    let y = 30;
+    data.forEach((ins, i) => {
+      const txt = `${ins.timestamp || 'No Date'} | ${ins.truck || 'Unknown'} | ${ins.driver || 'User'}`;
+      p.text(`#${i+1}: ${txt}`, 14, y);
+      y += 10; if(y > 280) { p.addPage(); y = 20; }
+    });
+    p.save("Inspection_Logs.pdf");
+  } catch (e) { toast(e.message, "error"); }
+  setLoad(false);
+};
+
+window.generateInspectionExcel = async () => {
+  setLoad(true);
+  try {
+    if(!window.XLSX) throw new Error("Excel Library Error");
+    const snap = await getDocs(collection(db, "inspections"));
+    const rows = snap.docs.map(d => {
+      const i = d.data() || {};
+      const row = {
+        Date: i.timestamp || "N/A",
+        Vehicle: i.truck || "N/A",
+        Driver: i.driver || "N/A",
+        Odometer: i.odo || "N/A"
+      };
+      if(i.checks && typeof i.checks === 'object') {
+        Object.keys(i.checks).forEach(k => { row[k] = i.checks[k]; });
+      }
+      return row;
+    });
+    if (rows.length === 0) throw new Error("No inspection data found to export.");
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inspections");
+    XLSX.writeFile(wb, "Inspection_Data.xlsx");
+  } catch (e) {
+    console.error(e);
+    toast("Excel Error: " + e.message, "error");
+  }
+  setLoad(false);
+};
+
+onAuthStateChanged(auth, async (u) => {
+  if (u) {
+    const s = await getDoc(doc(db, "users", u.uid));
+    profile = s.exists() ? s.data() : { role: "Driver", fullName: u.email };
+    document.getElementById("authArea").classList.add("hidden");
+    document.getElementById("appArea").classList.remove("hidden");
+    document.getElementById("userFull").textContent = getName();
+
+    const avatar = document.getElementById("avatar");
+    if(avatar) avatar.textContent = getName().charAt(0).toUpperCase();
+
+    const isMgr = isMC();
+    document.getElementById("mgrMenu").classList.toggle("hidden", !isMgr);
+
+    const fields = ["Oil","Coolant","Tyres","Brakes","Lights","Fuel"];
+    document.getElementById("insFields").innerHTML = fields.map(f => `
+      <div class="inspect-item"><label>${f}</label><select id="chk${f}"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+    `).join("");
+
+    await loadData();
+  } else {
+    document.getElementById("authArea").classList.remove("hidden");
+    document.getElementById("appArea").classList.add("hidden");
+    setLoad(false);
+  }
+});
+
+window.loginUser = async () => {
+  const e = document.getElementById("loginEmail").value;
+  const p = document.getElementById("loginPassword").value;
+  setLoad(true, "Authenticating...");
+  try { await signInWithEmailAndPassword(auth, e, p); }
+  catch (err) { alert("Login Failed: " + err.message); }
+  setLoad(false);
+};
+
+window.logoutUser = () => signOut(auth);
+
+</script>
+</body>
+</html>
