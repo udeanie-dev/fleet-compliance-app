@@ -142,6 +142,8 @@
         <div class="card"><div class="card-title">Downloads</div>
           <button class="btn btn-secondary" onclick="generatePDF()">📄 PDF Report</button>
           <button class="btn btn-success" onclick="generateExcel()">📊 Excel Sheet</button>
+          <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+          <button class="btn btn-secondary" onclick="generateInspectionPDF()">📋 Inspection PDF</button>
           <button class="btn btn-success" style="margin-top:10px" onclick="generateInspectionExcel()">📊 Inspection Excel</button>
         </div>
       </div>
@@ -319,21 +321,53 @@ window.generateExcel = () => {
   XLSX.writeFile(wb, "Fleet_Data.xlsx");
 };
 
+window.generateInspectionPDF = async () => {
+  setLoad(true, "Generating PDF...");
+  try {
+    const Lib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+    if(!Lib) throw new Error("PDF Library Error");
+    const snap = await getDocs(collection(db, "inspections"));
+    const data = snap.docs.map(d => d.data());
+    const p = new Lib();
+    p.text("Daily Inspection Logs", 14, 20);
+    let y = 30;
+    data.forEach((ins, i) => {
+      const txt = `${ins.timestamp || 'No Date'} | ${ins.truck || 'Unknown'} | ${ins.driver || 'User'}`;
+      p.text(`#${i+1}: ${txt}`, 14, y);
+      y += 10; if(y > 280) { p.addPage(); y = 20; }
+    });
+    p.save("Inspection_Logs.pdf");
+  } catch (e) { toast(e.message, "error"); }
+  setLoad(false);
+};
+
 window.generateInspectionExcel = async () => {
   setLoad(true);
   try {
+    if(!window.XLSX) throw new Error("Excel Library Error");
     const snap = await getDocs(collection(db, "inspections"));
     const rows = snap.docs.map(d => {
-      const i = d.data();
-      const row = { Date: i.timestamp, Vehicle: i.truck, Driver: i.driver, Odo: i.odo };
-      if(i.checks && typeof i.checks === 'object') Object.assign(row, i.checks);
+      const i = d.data() || {};
+      const row = {
+        Date: i.timestamp || "N/A",
+        Vehicle: i.truck || "N/A",
+        Driver: i.driver || "N/A",
+        Odometer: i.odo || "N/A"
+      };
+      if(i.checks && typeof i.checks === 'object') {
+        Object.keys(i.checks).forEach(k => { row[k] = i.checks[k]; });
+      }
       return row;
     });
+    if (rows.length === 0) throw new Error("No inspection data found to export.");
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inspections");
-    XLSX.writeFile(wb, "Inspections.xlsx");
-  } catch (e) { toast(e.message, "error"); }
+    XLSX.writeFile(wb, "Inspection_Data.xlsx");
+  } catch (e) {
+    console.error(e);
+    toast("Excel Error: " + e.message, "error");
+  }
   setLoad(false);
 };
 
@@ -344,6 +378,12 @@ onAuthStateChanged(auth, async (u) => {
     document.getElementById("authArea").classList.add("hidden");
     document.getElementById("appArea").classList.remove("hidden");
     document.getElementById("userFull").textContent = getName();
+
+    const avatar = document.getElementById("avatar");
+    if(avatar) avatar.textContent = getName().charAt(0).toUpperCase();
+
+    const isMgr = isMC();
+    document.getElementById("mgrMenu").classList.toggle("hidden", !isMgr);
 
     const fields = ["Oil","Coolant","Tyres","Brakes","Lights","Fuel"];
     document.getElementById("insFields").innerHTML = fields.map(f => `
