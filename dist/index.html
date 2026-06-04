@@ -94,6 +94,9 @@
     .spinner { width: 50px; height: 50px; border: 4px solid #eee; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 20px; }
+    .auth-card { background: var(--surface); border-radius: var(--radius-lg); padding: 40px; width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
+
     @media (max-width: 768px) {
       .app-layout { flex-direction: column; }
       .sidebar { width: 100%; height: auto; position: sticky; top: 110px; z-index: 90; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px solid var(--border); background: var(--surface); padding: 12px; }
@@ -360,7 +363,7 @@ function setLoad(s, t = "Loading...") {
 
 function toast(m, t) {
   const w = document.getElementById("toast-wrap"), e = document.createElement("div");
-  e.style = "background:var(--text);color:#fff;padding:12px 24px;border-radius:12px;box-shadow:var(--shadow-lg);margin-bottom:10px;font-size:14px;font-weight:600;";
+  e.style = "background:var(--text);color:#fff;padding:12px 24px;border-radius:12px;box-shadow:var(--shadow-lg);margin-bottom:10px;font-size:14px;font-weight:600;transition:0.3s;opacity:1;";
   if(t === "error") e.style.background = "var(--danger)";
   if(t === "success") e.style.background = "var(--success)";
   e.textContent = m;
@@ -382,12 +385,10 @@ async function loadData() {
   const isDriverUser = isD();
 
   try {
-    // 1. Documents
     let q = isDriverUser ? query(collection(db, "documents"), where("ownerName", "==", me)) : collection(db, "documents");
     const docSnap = await getDocs(q);
     docs = []; docSnap.forEach(d => docs.push({ id: d.id, ...d.data() }));
 
-    // 2. Helper Lists
     const drSnap = await getDocs(collection(db, "drivers")), trSnap = await getDocs(collection(db, "trucks")), dtSnap = await getDocs(collection(db, "documentTypes"));
     const drs = drSnap.docs.map(d=>d.data().name).filter(n => !isDriverUser || n === me).sort();
     const trs = trSnap.docs.map(d=>d.data().fleetNumber).sort();
@@ -398,7 +399,6 @@ async function loadData() {
     fillSelect("insTrk", trs);
     fillSelect("selType", dts);
 
-    // 3. Inspections (Manager Only)
     if (!isDriverUser) {
       const insSnap = await getDocs(query(collection(db, "inspections"), orderBy("timestamp", "desc")));
       inspections = []; insSnap.forEach(d => inspections.push({ id: d.id, ...d.data() }));
@@ -449,7 +449,6 @@ function renderUI() {
     </div>`).join("");
 }
 
-// Inspection Viewer Logic
 window.renderInspections = () => {
   const area = document.getElementById("inspectionsList");
   if (!area) return;
@@ -460,7 +459,6 @@ window.renderInspections = () => {
     (i.driver || "").toLowerCase().includes(search)
   );
 
-  // Group by Truck
   const groups = {};
   filtered.forEach(i => {
     if (!groups[i.truck]) groups[i.truck] = [];
@@ -522,7 +520,6 @@ window.viewInspectDetail = (id) => {
 
 window.closeInspectModal = () => document.getElementById("inspectModal").classList.add("hidden");
 
-// Existing Helper Functions
 function fillSelect(id, vals) {
   const el = document.getElementById(id); if (!el) return;
   el.innerHTML = `<option value="">Select...</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join("");
@@ -541,7 +538,6 @@ window.updateForm = () => {
   document.getElementById("trkGrp").classList.toggle("hidden", v !== "Truck" && v !== "Trailer");
 };
 
-// Data Actions
 window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required: Vehicle and Odometer");
@@ -552,24 +548,19 @@ window.saveInspect = async () => {
   setLoad(true, "Submitting Checklist...");
   try {
     await addDoc(collection(db, "inspections"), {
-      truck: t,
-      odo: o,
-      checks: results,
-      driver: getName(),
-      timestamp: new Date().toISOString()
+      truck: t, odo: o, checks: results, driver: getName(), timestamp: new Date().toISOString()
     });
     alert("Inspection Submitted Successfully");
     loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
   } catch (e) { alert("Submission Error"); } finally { setLoad(false); }
 };
 
-// Exports
 window.generateInspectionExcel = async () => {
   setLoad(true, "Building Excel Export...");
   try {
     const rows = inspections.map(i => {
-      const flat = { "Date": new Date(i.timestamp).toLocaleString(), "Truck": i.truck, "Driver": i.driver, "Odometer": i.odo, "Comments": i.comments || "" };
-      Object.entries(i.checks || {}).forEach(([k, v]) => flat[k] = v);
+      const flat = { "Date": i.timestamp ? new Date(i.timestamp).toLocaleString() : "N/A", "Truck": i.truck || "N/A", "Driver": i.driver || "N/A", "Odometer": i.odo || "N/A", "Comments": i.comments || "" };
+      if (i.checks) Object.entries(i.checks).forEach(([k, v]) => flat[k] = v);
       return flat;
     });
     if (!rows.length) return alert("No data to export");
@@ -579,7 +570,111 @@ window.generateInspectionExcel = async () => {
   } catch (e) { alert("Excel Export Failed"); } finally { setLoad(false); }
 };
 
-// Auth
+window.saveDoc = async () => {
+  const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
+  const drv = document.getElementById("selDrv").value, trk = document.getElementById("selTrk").value;
+  const on = isD() ? getName() : (ot === 'Driver' ? drv : trk);
+  const file = document.getElementById("fileInput").files[0];
+  if (!on || !dt || !ed) return alert("Required: Owner, Type, Date");
+  setLoad(true, "Saving Record...");
+  try {
+    let fileUrl = "";
+    if (file) {
+      const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
+      const uploadResult = await uploadBytes(storageRef, file);
+      fileUrl = await getDownloadURL(uploadResult.ref);
+    }
+    await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
+    toast("Saved Successfully", "success"); resetDocForm(); loadData();
+  } catch (e) { alert("Save Failed"); } finally { setLoad(false); }
+};
+
+window.resetDocForm = () => {
+  document.getElementById("expDate").value = "";
+  document.getElementById("fileInput").value = "";
+};
+
+window.performOCR = async () => {
+  const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select image first");
+  setLoad(true, "OCR Scanning...");
+  try {
+    const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f);
+    const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/);
+    if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0];
+    await w.terminate(); toast("OCR Done", "success");
+  } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+};
+
+window.manageDocTypes = async () => {
+  const mgr = document.getElementById("typeManager"); mgr.classList.toggle("hidden");
+  if (mgr.classList.contains("hidden")) return;
+  const snap = await getDocs(collection(db, "documentTypes"));
+  document.getElementById("typeListArea").innerHTML = snap.docs.map(d => `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;"><span>${d.data().name}</span><button onclick="deleteDocType('${d.id}')" style="color:red; border:none; background:none; cursor:pointer;">✖</button></div>`).join("");
+};
+
+window.addDocType = async () => {
+  const name = document.getElementById("newTypeName").value; if (!name) return;
+  await addDoc(collection(db, "documentTypes"), { name });
+  document.getElementById("newTypeName").value = ""; loadData(); manageDocTypes();
+};
+
+window.deleteDocType = async (id) => {
+  if (confirm("Delete type?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); manageDocTypes(); }
+};
+
+window.renderUsersList = async () => {
+  const snap = await getDocs(collection(db, "users"));
+  document.getElementById("usersListArea").innerHTML = snap.docs.map(d => `<div class="doc-item"><strong>${d.data().fullName}</strong><br><small>${d.data().email} (${d.data().role})</small></div>`).join("");
+};
+
+window.createNewUser = async () => {
+  const name = document.getElementById("newUserFirstName").value, surname = document.getElementById("newUserLastName").value;
+  const email = document.getElementById("newUserEmail").value, pass = document.getElementById("newUserPass").value, role = document.getElementById("newUserRole").value;
+  if(!name || !email || !pass) return alert("Fields required");
+  setLoad(true, "Creating User...");
+  try {
+    const createUserFunc = httpsCallable(functions, 'createAppUser');
+    await createUserFunc({ name, surname, email, password: pass, role });
+    toast("User Created", "success"); loadData();
+  } catch (e) { alert("Error: " + e.message); } finally { setLoad(false); }
+};
+
+window.renderBrowse = () => {
+  const dbBox = document.getElementById("drBrowse"), tbBox = document.getElementById("trBrowse");
+  getDocs(collection(db, "drivers")).then(snap => {
+    dbBox.innerHTML = snap.docs.map(i => `<div class="browse-item" onclick="viewDocs('Driver','${i.data().name}')">${i.data().name}</div>`).join("");
+  });
+  getDocs(collection(db, "trucks")).then(snap => {
+    tbBox.innerHTML = snap.docs.map(i => `<div class="browse-item" onclick="viewDocs('Truck','${i.data().fleetNumber}')">${i.data().fleetNumber}</div>`).join("");
+  });
+};
+
+window.viewDocs = (type, name) => {
+  const list = docs.filter(d => d.ownerType === type && d.ownerName === name);
+  const target = type === "Driver" ? document.getElementById("drDocs") : document.getElementById("trDocs");
+  target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date})</div>`).join("") : "No records.";
+};
+
+window.generatePDF = () => {
+  const { jsPDF: Doc } = window.jspdf; const doc = new Doc();
+  doc.text("Compliance Report", 14, 20);
+  let y = 30; docs.forEach(d => { doc.text(`${d.ownerName}: ${d.documentType} (${d.date})`, 14, y); y += 10; });
+  doc.save("Report.pdf");
+};
+
+window.generateExcel = () => {
+  const data = docs.map(d => ({ "Owner": d.ownerName, "Type": d.documentType, "Expiry": d.date }));
+  const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Compliance"); XLSX.writeFile(wb, "Data.xlsx");
+};
+
+window.generateInspectionPDF = async () => {
+  const { jsPDF: Doc } = window.jspdf; const doc = new Doc();
+  doc.text("Inspection Logs", 14, 20);
+  let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; });
+  doc.save("Inspections.pdf");
+};
+
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     const snap = await getDoc(doc(db, "users", u.uid));
@@ -598,25 +693,9 @@ onAuthStateChanged(auth, async (u) => {
 
 window.loginUser = async () => {
   const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value;
-  try { setLoad(true, "Authenticating..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed"); setLoad(false); }
+  try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed"); setLoad(false); }
 };
 window.logoutUser = () => signOut(auth);
-
-// Re-map other window functions from previous working version...
-window.saveDoc = async () => { /* ... existing save logic ... */ };
-window.performOCR = async () => { /* ... existing OCR logic ... */ };
-window.generatePDF = () => { /* ... existing PDF logic ... */ };
-window.generateExcel = () => { /* ... existing doc excel logic ... */ };
-window.generateInspectionPDF = async () => { /* ... existing insp pdf logic ... */ };
-window.manageDocTypes = async () => { /* ... existing type mgr logic ... */ };
-window.addDocType = async () => { /* ... existing add type logic ... */ };
-window.deleteDocType = async (id) => { /* ... existing delete type logic ... */ };
-window.editDoc = (id) => { /* ... existing edit logic ... */ };
-window.deleteDocItem = async (id) => { /* ... existing delete doc logic ... */ };
-window.renderUsersList = async () => { /* ... existing user list logic ... */ };
-window.createNewUser = async () => { /* ... existing create user logic ... */ };
-window.renderBrowse = () => { /* ... existing browse logic ... */ };
-window.viewDocs = (t, n) => { /* ... existing view doc logic ... */ };
 
 </script>
 </body>
