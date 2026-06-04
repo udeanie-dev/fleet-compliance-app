@@ -872,23 +872,36 @@ window.generateInspectionExcel = async () => {
     const rows = snap.docs.map(d => {
       const ins = d.data();
       const flat = {
-        "Date": new Date(ins.timestamp).toLocaleString(),
-        "Truck": ins.truck,
-        "Driver": ins.driver,
-        "Odometer": ins.odo,
+        "Date": ins.timestamp ? new Date(ins.timestamp).toLocaleString() : "N/A",
+        "Truck": ins.truck || "N/A",
+        "Driver": ins.driver || "N/A",
+        "Odometer": ins.odo || "N/A",
         "Comments": ins.comments || ""
       };
-      Object.entries(ins.checks).forEach(([k, v]) => {
-        flat[k] = v;
-      });
+      if (ins.checks) {
+        Object.entries(ins.checks).forEach(([k, v]) => {
+          flat[k] = v;
+        });
+      }
       return flat;
     });
+
+    if (rows.length === 0) {
+      alert("No inspection data found.");
+      return;
+    }
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inspections");
     XLSX.writeFile(wb, "Inspection_Data.xlsx");
-  } catch (e) { alert("Error: " + e.message); } finally { setLoad(false); }
+    toast("Excel Generated", "success");
+  } catch (e) {
+    console.error("Excel Error:", e);
+    alert("Excel Error: " + e.message);
+  } finally {
+    setLoad(false);
+  }
 };
 </script>
 </body>
