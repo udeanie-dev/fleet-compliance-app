@@ -468,7 +468,28 @@ window.renderUsersList = async () => {
     return sort === "asc" ? res : -res;
   });
 
-  document.getElementById("usersListArea").innerHTML = userList.map(u => `<div class="doc-item"><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>`).join("");
+  document.getElementById("usersListArea").innerHTML = userList.map(u => `
+    <div class="doc-item">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>
+        ${u.id !== auth.currentUser.uid ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger); border-color:#fca5a5;" onclick="removeSystemUser('${u.id}')">Remove Account</button>` : ''}
+      </div>
+    </div>`).join("");
+};
+
+window.removeSystemUser = async (uid) => {
+  if (!confirm("Are you sure you want to permanently delete this user account? This cannot be undone.")) return;
+  setLoad(true, "Removing Account...");
+  try {
+    const delFunc = httpsCallable(functions, 'deleteAppUser');
+    await delFunc({ uid });
+    toast("User Removed Successfully", "success");
+    loadData();
+  } catch (err) {
+    alert("Error removing user: " + err.message);
+  } finally {
+    setLoad(false);
+  }
 };
 
 window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } } };
