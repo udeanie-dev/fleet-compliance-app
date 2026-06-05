@@ -287,7 +287,10 @@ const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), sto
 
 let profile = null, docs = [], users = [], inspections = [];
 
-const isM = () => (profile?.role || "").toLowerCase() === "manager";
+const isMC = () => {
+  const role = (profile?.role || "").toLowerCase();
+  return role === "manager" || role === "controller" || role === "admin";
+};
 const isD = () => (profile?.role || "").toLowerCase() === "driver";
 const getName = () => profile?.fullName || auth.currentUser?.email || "User";
 
@@ -334,13 +337,18 @@ async function loadData() {
 
 function renderUI() {
   const isDriverUser = isD();
-  document.getElementById("mgrOnlyMenu").classList.toggle("hidden", isDriverUser);
+  const hasStaffAccess = isMC();
+
+  document.getElementById("mgrOnlyMenu").classList.toggle("hidden", !hasStaffAccess);
   document.getElementById("mgrStats").classList.toggle("hidden", isDriverUser);
+
   if (!isDriverUser) {
     document.getElementById("statTotal").textContent = docs.length;
     document.getElementById("statExpired").textContent = docs.filter(d => getStatus(d.date).text === "EXPIRED").length;
     document.getElementById("stat30").textContent = docs.filter(d => getStatus(d.date).text.includes("days")).length;
-    renderBrowse(); renderUsersList(); renderInspections();
+    renderBrowse();
+    if (hasStaffAccess) renderUsersList();
+    renderInspections();
   }
   const urgent = docs.filter(d => getStatus(d.date).urgent);
   document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `<div class="doc-item"><div style="display:flex; justify-content:space-between;"><div><strong>${d.documentType}</strong><br><small>${d.ownerName}</small></div><div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div>${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="window.open('${d.fileUrl}')">📄 View</button>` : ''}</div>`).join("") : "<div style='text-align:center; padding:40px; color:#999;'>✅ All Compliance Clear</div>";
@@ -422,9 +430,12 @@ window.loginUser = async () => { const e = document.getElementById("loginEmail")
 
 onAuthStateChanged(auth, async (u) => {
   if (u) {
-    const snap = await getDoc(doc(db, "users", u.uid)); profile = snap.exists() ? snap.data() : { role: "Driver", fullName: u.email };
-    document.getElementById("authArea").classList.add("hidden"); document.getElementById("appArea").classList.remove("hidden");
-    document.getElementById("userFull").textContent = getName(); const av = document.getElementById("avatar"); if (av) av.textContent = getName()[0].toUpperCase();
+    const snap = await getDoc(doc(db, "users", u.uid));
+    profile = snap.exists() ? snap.data() : { role: "Driver", fullName: u.email };
+    document.getElementById("authArea").classList.add("hidden");
+    document.getElementById("appArea").classList.remove("hidden");
+    document.getElementById("userFull").textContent = getName();
+    const av = document.getElementById("avatar"); if (av) av.textContent = getName()[0].toUpperCase();
     loadData();
   } else { document.getElementById("authArea").classList.remove("hidden"); document.getElementById("appArea").classList.add("hidden"); setLoad(false); }
 });
@@ -438,6 +449,7 @@ window.addDocType = async () => { const n = document.getElementById("newTypeName
 window.deleteDocType = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); window.manageDocTypes(); } };
 
 window.renderUsersList = async () => {
+  if (!isMC()) return;
   const snap = await getDocs(collection(db, "users"));
   const search = document.getElementById("userSearch").value.toLowerCase();
   const sort = document.getElementById("userSort").value;
@@ -446,13 +458,13 @@ window.renderUsersList = async () => {
 
   // Search
   userList = userList.filter(u =>
-    u.fullName.toLowerCase().includes(search) ||
-    u.email.toLowerCase().includes(search)
+    (u.fullName || "").toLowerCase().includes(search) ||
+    (u.email || "").toLowerCase().includes(search)
   );
 
   // Sort
   userList.sort((a, b) => {
-    const res = a.fullName.localeCompare(b.fullName);
+    const res = (a.fullName || "").localeCompare(b.fullName || "");
     return sort === "asc" ? res : -res;
   });
 
@@ -480,9 +492,9 @@ window.renderBrowse = () => {
     const search = document.getElementById("trSearch").value.toLowerCase();
     const sort = document.getElementById("trSort").value;
     let list = s.docs.map(d => d.data());
-    list = list.filter(d => d.fleetNumber.toLowerCase().includes(search));
+    list = list.filter(d => (d.fleetNumber || "").toLowerCase().includes(search));
     list.sort((a, b) => {
-      const res = a.fleetNumber.localeCompare(b.fleetNumber);
+      const res = (a.fleetNumber || "").localeCompare(b.fleetNumber || "");
       return sort === "asc" ? res : -res;
     });
     document.getElementById("trBrowse").innerHTML = list.map(i => `<div class="browse-item" onclick="viewDocs('Truck','${i.fleetNumber}')">${i.fleetNumber} <span>➔</span></div>`).join("");
