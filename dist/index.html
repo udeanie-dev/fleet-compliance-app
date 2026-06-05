@@ -218,7 +218,7 @@
             <div class="section-title">Fluids & Engine</div>
             <div class="inspect-item"><label>Coolant Level</label><select id="chkCoolant"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Engine Oil Level</label><select id="chkOil"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
-            <div class="inspect-item"><label>Clutch Fluid</label><select id="chkClutch"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Clutch Fluid</label><select id="chkOil"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Steering Fluid</label><select id="chkSteeringFluid"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Diesel Level</label><select id="chkDieselLevel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Tank Caps</label><select id="chkTankCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
@@ -691,26 +691,6 @@ window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerNam
 window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspections.pdf"); };
 window.editDoc = (id) => { const d = docs.find(x => x.id === id); if (d) { document.getElementById("ownerType").value = d.ownerType; updateForm(); if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName; else document.getElementById("selTrk").value = d.ownerName; document.getElementById("selType").value = d.documentType; document.getElementById("expDate").value = d.date; showTab('addDocTab', null); } };
 window.deleteDocItem = async (id) => { if (confirm("Delete document?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
-
-window.filterDash = (mode) => {
-  let list = [];
-  const title = document.getElementById("dashTitle");
-  if (mode === 'all') { list = docs; title.textContent = "All Compliance Records"; }
-  else if (mode === 'expired') { list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); title.textContent = "Expired Compliance Alerts"; }
-  else if (mode === 'due') { list = docs.filter(d => getStatus(d.date).text.includes("days") || getStatus(d.date).text === "DUE TODAY"); title.textContent = "Upcoming Expirations (30 Days)"; }
-
-  const area = document.getElementById("urgentList");
-  area.innerHTML = list.length ? list.map(d => {
-    const s = getStatus(d.date);
-    return `<div class="doc-item">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <div><div style="font-weight:700; font-size:16px;">${d.documentType}</div><div style="color:var(--text-2); font-size:13px;">${d.ownerName}</div></div>
-        <div class="doc-meta"><span class="pill ${s.class}">${s.text}</span><span class="pill">${d.date}</span></div>
-      </div>
-      ${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:15px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View Document</button>` : ''}
-    </div>`;
-  }).join("") : "<div style='text-align:center; padding:40px; color:#999;'>✅ No matching records.</div>";
-};
 
 </script>
 </body>
