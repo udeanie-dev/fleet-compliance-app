@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.1</title>
+  <title>PermitSphere v5.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -78,9 +78,17 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .hidden { display: none !important; }
     .browse-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .browse-item { padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px; background: var(--surface-2); }
+    .browse-item { padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 8px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; }
     .inspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
     .inspect-item { display: flex; flex-direction: column; gap: 5px; }
+
+    /* Control Bar for Lists */
+    .list-controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 200px; position: relative; }
+    .search-box input { padding-left: 40px; }
+    .search-box::before { content: "🔍"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-3); }
+    .sort-box { width: 180px; }
+
     @media (max-width: 768px) {
       .app-layout { flex-direction: column; }
       .sidebar { width: 100%; height: auto; position: sticky; top: 110px; z-index: 90; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px solid var(--border); background: var(--surface); padding: 12px; }
@@ -153,7 +161,9 @@
       <div id="inspectViewTab" class="tab-section">
         <div class="card">
           <div class="card-title">Daily Inspection History</div>
-          <div style="margin-bottom:20px;"><input type="text" id="insSearch" placeholder="Filter by Fleet # or Driver..." oninput="renderInspections()"></div>
+          <div class="list-controls">
+            <div class="search-box"><input type="text" id="insSearch" placeholder="Filter by Fleet # or Driver..." oninput="renderInspections()"></div>
+          </div>
           <div id="inspectionsList">Loading inspections...</div>
         </div>
       </div>
@@ -201,8 +211,27 @@
         </div>
       </div>
 
-      <div id="driversTab" class="tab-section"><div class="card"><div class="card-title">Driver Records Status</div><div class="browse-grid"><div id="drBrowse"></div><div id="drDocs"></div></div></div></div>
-      <div id="trucksTab" class="tab-section"><div class="card"><div class="card-title">Vehicle Records Status</div><div class="browse-grid"><div id="trBrowse"></div><div id="trDocs"></div></div></div></div>
+      <div id="driversTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Driver Records Status</div>
+          <div class="list-controls">
+            <div class="search-box"><input type="text" id="drSearch" placeholder="Search drivers..." oninput="renderBrowse()"></div>
+            <div class="sort-box"><select id="drSort" onchange="renderBrowse()"><option value="asc">A to Z</option><option value="desc">Z to A</option></select></div>
+          </div>
+          <div class="browse-grid"><div id="drBrowse"></div><div id="drDocs"></div></div>
+        </div>
+      </div>
+
+      <div id="trucksTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Vehicle Records Status</div>
+          <div class="list-controls">
+            <div class="search-box"><input type="text" id="trSearch" placeholder="Search trucks..." oninput="renderBrowse()"></div>
+            <div class="sort-box"><select id="trSort" onchange="renderBrowse()"><option value="asc">A to Z</option><option value="desc">Z to A</option></select></div>
+          </div>
+          <div class="browse-grid"><div id="trBrowse"></div><div id="trDocs"></div></div>
+        </div>
+      </div>
 
       <div id="usersTab" class="tab-section">
         <div class="card">
@@ -216,7 +245,14 @@
           </div>
           <button class="btn btn-primary" style="width:100%;" onclick="createNewUser()">👤 Create User Account</button>
         </div>
-        <div class="card"><div class="card-title">Active Directory</div><div id="usersListArea"></div></div>
+        <div class="card">
+          <div class="card-title">Active Directory</div>
+          <div class="list-controls">
+            <div class="search-box"><input type="text" id="userSearch" placeholder="Search users..." oninput="renderUsersList()"></div>
+            <div class="sort-box"><select id="userSort" onchange="renderUsersList()"><option value="asc">A to Z</option><option value="desc">Z to A</option></select></div>
+          </div>
+          <div id="usersListArea"></div>
+        </div>
       </div>
 
       <div id="reportsTab" class="tab-section">
@@ -400,10 +436,60 @@ document.getElementById("insFields1").innerHTML = checks.map(c => `<div class="i
 window.manageDocTypes = async () => { document.getElementById("typeManager").classList.toggle("hidden"); const snap = await getDocs(collection(db, "documentTypes")); document.getElementById("typeListArea").innerHTML = snap.docs.map(d => `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;"><span>${d.data().name}</span><button onclick="deleteDocType('${d.id}')" style="color:red; border:none; background:none; cursor:pointer;">✖</button></div>`).join(""); };
 window.addDocType = async () => { const n = document.getElementById("newTypeName").value; if (n) { await addDoc(collection(db, "documentTypes"), { name: n }); document.getElementById("newTypeName").value = ""; loadData(); window.manageDocTypes(); } };
 window.deleteDocType = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); window.manageDocTypes(); } };
-window.renderUsersList = async () => { const snap = await getDocs(collection(db, "users")); document.getElementById("usersListArea").innerHTML = snap.docs.map(d => `<div class="doc-item"><strong>${d.data().fullName}</strong><br><small>${d.data().email} (${d.data().role})</small></div>`).join(""); };
+
+window.renderUsersList = async () => {
+  const snap = await getDocs(collection(db, "users"));
+  const search = document.getElementById("userSearch").value.toLowerCase();
+  const sort = document.getElementById("userSort").value;
+
+  let userList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Search
+  userList = userList.filter(u =>
+    u.fullName.toLowerCase().includes(search) ||
+    u.email.toLowerCase().includes(search)
+  );
+
+  // Sort
+  userList.sort((a, b) => {
+    const res = a.fullName.localeCompare(b.fullName);
+    return sort === "asc" ? res : -res;
+  });
+
+  document.getElementById("usersListArea").innerHTML = userList.map(u => `<div class="doc-item"><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>`).join("");
+};
+
 window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } } };
-window.renderBrowse = () => { getDocs(collection(db, "drivers")).then(s => { document.getElementById("drBrowse").innerHTML = s.docs.map(i => `<div class="browse-item" onclick="viewDocs('Driver','${i.data().name}')">${i.data().name}</div>`).join(""); }); getDocs(collection(db, "trucks")).then(s => { document.getElementById("trBrowse").innerHTML = s.docs.map(i => `<div class="browse-item" onclick="viewDocs('Truck','${i.data().fleetNumber}')">${i.data().fleetNumber}</div>`).join(""); }); };
-window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t && d.ownerName === n); const target = t === "Driver" ? document.getElementById("drDocs") : document.getElementById("trDocs"); target.innerHTML = list.length ? list.map(d => `<div class="doc-item">${d.documentType} (${d.date})</div>`).join("") : "No records."; };
+
+window.renderBrowse = () => {
+  // Drivers
+  getDocs(collection(db, "drivers")).then(s => {
+    const search = document.getElementById("drSearch").value.toLowerCase();
+    const sort = document.getElementById("drSort").value;
+    let list = s.docs.map(d => d.data());
+    list = list.filter(d => d.name.toLowerCase().includes(search));
+    list.sort((a, b) => {
+      const res = a.name.localeCompare(b.name);
+      return sort === "asc" ? res : -res;
+    });
+    document.getElementById("drBrowse").innerHTML = list.map(i => `<div class="browse-item" onclick="viewDocs('Driver','${i.name}')">${i.name} <span>➔</span></div>`).join("");
+  });
+
+  // Trucks
+  getDocs(collection(db, "trucks")).then(s => {
+    const search = document.getElementById("trSearch").value.toLowerCase();
+    const sort = document.getElementById("trSort").value;
+    let list = s.docs.map(d => d.data());
+    list = list.filter(d => d.fleetNumber.toLowerCase().includes(search));
+    list.sort((a, b) => {
+      const res = a.fleetNumber.localeCompare(b.fleetNumber);
+      return sort === "asc" ? res : -res;
+    });
+    document.getElementById("trBrowse").innerHTML = list.map(i => `<div class="browse-item" onclick="viewDocs('Truck','${i.fleetNumber}')">${i.fleetNumber} <span>➔</span></div>`).join("");
+  });
+};
+
+window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t && d.ownerName === n); const target = t === "Driver" ? document.getElementById("drDocs") : document.getElementById("trDocs"); target.innerHTML = list.length ? list.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date}</small></div>`).join("") : "No records."; };
 window.generatePDF = () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Compliance Report", 14, 20); let y = 30; docs.forEach(d => { doc.text(`${d.ownerName}: ${d.documentType} (${d.date})`, 14, y); y += 10; }); doc.save("Report.pdf"); };
 window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerName, "Type": d.documentType, "Expiry": d.date })); const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Compliance"); XLSX.writeFile(wb, "Data.xlsx"); };
 window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspections.pdf"); };
