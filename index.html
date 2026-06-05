@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.2</title>
+  <title>PermitSphere v5.3</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -51,7 +51,7 @@
     .doc-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #fff; border: 1px solid var(--border); }
     .pill.expired { background: var(--danger-light); color: var(--danger); border-color: #fecaca; }
-    .pill.warning { background: var(--warning-light); color: var(--warning); border-color: #fef3c7; }
+    .pill.warning { background: var(--warning-light); color: var(--warning); border-color: #fcd34d; }
     .pill.ok { background: var(--success-light); color: var(--success); border-color: #d1fae5; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
@@ -528,6 +528,26 @@ window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerNam
 window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspections.pdf"); };
 window.editDoc = (id) => { const d = docs.find(x => x.id === id); if (d) { document.getElementById("ownerType").value = d.ownerType; updateForm(); if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName; else document.getElementById("selTrk").value = d.ownerName; document.getElementById("selType").value = d.documentType; document.getElementById("expDate").value = d.date; showTab('addDocTab', null); } };
 window.deleteDocItem = async (id) => { if (confirm("Delete document?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
+
+window.filterDash = (mode) => {
+  let list = [];
+  const title = document.getElementById("dashTitle");
+  if (mode === 'all') { list = docs; title.textContent = "All Compliance Records"; }
+  else if (mode === 'expired') { list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); title.textContent = "Expired Compliance Alerts"; }
+  else if (mode === 'due') { list = docs.filter(d => getStatus(d.date).text.includes("days") || getStatus(d.date).text === "DUE TODAY"); title.textContent = "Upcoming Expirations (30 Days)"; }
+
+  const area = document.getElementById("urgentList");
+  area.innerHTML = list.length ? list.map(d => {
+    const s = getStatus(d.date);
+    return `<div class="doc-item">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div><div style="font-weight:700; font-size:16px;">${d.documentType}</div><div style="color:var(--text-2); font-size:13px;">${d.ownerName}</div></div>
+        <div class="doc-meta"><span class="pill ${s.class}">${s.text}</span><span class="pill">${d.date}</span></div>
+      </div>
+      ${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:15px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View Document</button>` : ''}
+    </div>`;
+  }).join("") : "<div style='text-align:center; padding:40px; color:var(--text-3); font-weight:600;'>✅ No matching records.</div>";
+};
 
 </script>
 </body>
