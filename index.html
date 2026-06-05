@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.3</title>
+  <title>PermitSphere v5.4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -88,6 +88,8 @@
     .search-box input { padding-left: 40px; }
     .search-box::before { content: "🔍"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-3); }
     .sort-box { width: 180px; }
+
+    .section-title { font-size: 14px; font-weight: 700; color: var(--brand); margin: 20px 0 10px; border-bottom: 2px solid var(--brand-light); padding-bottom: 4px; grid-column: 1 / -1; }
 
     @media (max-width: 768px) {
       .app-layout { flex-direction: column; }
@@ -203,16 +205,135 @@
 
       <div id="inspectTab" class="tab-section">
         <div class="card">
-          <div class="card-title">Pre-Trip Vehicle Inspection</div>
+          <div class="card-title">Vehicle & Odometer</div>
           <div class="form-grid">
              <div class="form-group"><label>Vehicle Fleet Number</label><select id="insTrk"></select></div>
              <div class="form-group"><label>Odometer Reading (KM)</label><input id="insOdo" type="number" placeholder="Enter current KM"></div>
           </div>
         </div>
+
         <div class="card">
-          <div class="card-title">Engine & External Check-list</div>
-          <div class="inspect-grid" id="insFields1"></div>
+          <div class="card-title">1. Initial & External Checks</div>
+          <div class="inspect-grid">
+            <div class="section-title">Fluids & Engine</div>
+            <div class="inspect-item"><label>Coolant Level</label><select id="chkCoolant"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Engine Oil Level</label><select id="chkOil"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Clutch Fluid</label><select id="chkClutch"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Steering Fluid</label><select id="chkSteeringFluid"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Diesel Level</label><select id="chkDieselLevel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Tank Caps</label><select id="chkTankCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="section-title">Compliance & Body</div>
+            <div class="inspect-item"><label>License/CoF/Disc</label><select id="chkLicenseDisc"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Accident Damage</label><select id="chkDamage"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Paint Work</label><select id="chkPaint"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
         </div>
+
+        <div class="card">
+          <div class="card-title">2. Tyres, Wheels & Steering</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label>Tyre Pressures</label><select id="chkTyrePress"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Valve Caps</label><select id="chkValveCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Valve Extensions</label><select id="chkValveExt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Wheel Nuts/Ind.</label><select id="chkWheelNuts"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Smooth Tyres</label><select id="chkSmoothTyres"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Damaged Tyres</label><select id="chkDamagedTyres"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Steering Function</label><select id="chkSteeringFunc"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Exhaust Brake</label><select id="chkExhBrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Retarder Function</label><select id="chkRetarder"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Door Locks</label><select id="chkDoorLocks"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">3. In-Cab & Ignition</div>
+          <div class="inspect-grid">
+            <div class="section-title">Ignition On</div>
+            <div class="inspect-item"><label>Warning Lights</label><select id="chkWarnLights"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Low Air/Brakes</label><select id="chkLowAir"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Wipers Function</label><select id="chkWipers"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Heater Function</label><select id="chkHeater"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>All Lights/Ind.</label><select id="chkAllLights"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Seat Belt</label><select id="chkSeatBelt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Drivers Seat</label><select id="chkSeat"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Mirrors</label><select id="chkMirrors"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Loose Items</label><select id="chkLooseItems"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Footbrake</label><select id="chkFootbrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Handbrake</label><select id="chkHandbrake"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="section-title">Engine Running</div>
+            <div class="inspect-item"><label>Oil Press Normal</label><select id="chkOilPress"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Warn Lights Off</label><select id="chkWarnOff"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Air Press Full</label><select id="chkAirFull"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">4. Mechanical & Exterior</div>
+          <div class="inspect-grid">
+            <div class="section-title">Leaks & Security</div>
+            <div class="inspect-item"><label>Oil Leaks</label><select id="chkLeakOil"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Water Leaks</label><select id="chkLeakWater"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Fuel Leaks</label><select id="chkLeakFuel"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Fuel Tank Secure</label><select id="chkFuelTankSec"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Air Tanks Secure</label><select id="chkAirTanksSec"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Drain Air Tanks</label><select id="chkDrainAir"><option value="Done">Done</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Air Leaks</label><select id="chkAirLeaks"><option value="None">None</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Batt. Isolator</label><select id="chkBattIso"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="section-title">Coupling & Connection</div>
+            <div class="inspect-item"><label>5th Wheel Lock Trk</label><select id="chk5thLockTrk"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>5th Wheel Lock Trl</label><select id="chk5thLockTrl"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Landing Legs</label><select id="chkLandingLegs"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Air Hose Conn.</label><select id="chkAirHose"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Electrical Conn.</label><select id="chkElecConn"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>5th Wheel Pins</label><select id="chk5thPins"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="section-title">Visibility</div>
+            <div class="inspect-item"><label>Reflectors/Tape</label><select id="chkReflectors"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Chevron Board</label><select id="chkChevron"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Number Plates</label><select id="chkPlates"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Refl. Tape Truck</label><select id="chkTapeTrk"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Refl. Tape Trailer</label><select id="chkTapeTrl"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">5. Equipment & Cargo</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label>Straps & Ratchets</label><select id="chkStraps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Tarpaulin</label><select id="chkTarps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Nets</label><select id="chkNets"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Chains</label><select id="chkChains"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Binders/Saturns</label><select id="chkBinders"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Dunnage</label><select id="chkDunnage"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Rubber Strips</label><select id="chkRubber"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Corner Plates</label><select id="chkCornerPlates"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Jack</label><select id="chkJack"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Tools/Spanner</label><select id="chkTools"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Spare Wheel</label><select id="chkSpareWheel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Stop Blocks</label><select id="chkStopBlocks"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Warning Triangles</label><select id="chkTriangles"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Fire Ext.</label><select id="chkFireExt"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Ext. Expiry Date</label><select id="chkExtExpiry"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Haz Diamond</label><select id="chkHazDiamond"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Placard Holders</label><select id="chkPlacards"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">6. PPE Checklist</div>
+          <div class="inspect-grid">
+            <div class="inspect-item"><label>Fire Retard. Overall</label><select id="chkOverall"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Refl. Vest</label><select id="chkReflectiveVest"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Safety Boots</label><select id="chkBoots"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Helmet</label><select id="chkHelmet"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Eye Protection</label><select id="chkGlasses"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Ear Plugs</label><select id="chkEarPlugs"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Dust Mask</label><select id="chkDustMask"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Gloves</label><select id="chkLGloves"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>Safety Harness</label><select id="chkHarness"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="inspect-item"><label>First Aid Kit</label><select id="chkFirstAid"><option value="Yes">Yes</option><option value="No">No</option></select></div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Final Comments</div>
           <textarea id="insComments" rows="3" placeholder="Describe any defects or damages..."></textarea>
@@ -333,7 +454,6 @@ async function loadData() {
     const docSnap = await getDocs(q); docs = []; docSnap.forEach(d => docs.push({ id: d.id, ...d.data() }));
     const drSnap = await getDocs(collection(db, "drivers")), trSnap = await getDocs(collection(db, "trucks")), dtSnap = await getDocs(collection(db, "documentTypes"));
 
-    // Ensure lists are sorted before filling selects
     const drNames = drSnap.docs.map(d=>d.data().name).filter(n => !isDriverUser || n === me).sort();
     const trNumbers = trSnap.docs.map(d=>d.data().fleetNumber).sort();
     const dtNames = dtSnap.docs.map(d=>d.data().name).sort();
@@ -589,7 +709,7 @@ window.filterDash = (mode) => {
       </div>
       ${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:15px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View Document</button>` : ''}
     </div>`;
-  }).join("") : "<div style='text-align:center; padding:40px; color:var(--text-3); font-weight:600;'>✅ No matching records.</div>";
+  }).join("") : "<div style='text-align:center; padding:40px; color:#999;'>✅ No matching records.</div>";
 };
 
 </script>
