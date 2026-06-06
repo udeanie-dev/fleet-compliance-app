@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.5</title>
+  <title>PermitSphere v5.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -139,10 +139,12 @@
       <button class="nav-btn" onclick="showTab('addDocTab',this)">📝 Add Record</button>
       <button class="nav-btn" onclick="showTab('allDocsTab',this)">📄 All Documents</button>
       <button class="nav-btn" onclick="showTab('inspectTab',this)">📋 Perform Check</button>
+      <button class="nav-btn" onclick="showTab('fuelTab',this)">⛽ Fuel Log</button>
 
       <div id="mgrOnlyMenu" class="hidden">
         <div class="nav-section">Administration</div>
         <button class="nav-btn" onclick="showTab('inspectViewTab',this)">🚛 View Inspections</button>
+        <button class="nav-btn" onclick="showTab('fuelViewTab',this)">⛽ View Fuel Logs</button>
         <button class="nav-btn" onclick="showTab('usersTab',this)">👥 System Users</button>
         <button class="nav-btn" onclick="showTab('driversTab',this)">🧑 Drivers List</button>
         <button class="nav-btn" onclick="showTab('trucksTab',this)">🚚 Trucks List</button>
@@ -167,6 +169,34 @@
             <div class="search-box"><input type="text" id="insSearch" placeholder="Filter by Fleet # or Driver..." oninput="renderInspections()"></div>
           </div>
           <div id="inspectionsList">Loading inspections...</div>
+        </div>
+      </div>
+
+      <div id="fuelViewTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Fuel Consumption History</div>
+          <div class="list-controls">
+            <div class="search-box"><input type="text" id="fuelSearch" placeholder="Search by Truck or Driver..." oninput="renderFuelLogs()"></div>
+          </div>
+          <div id="fuelLogsList">Loading fuel data...</div>
+        </div>
+      </div>
+
+      <div id="fuelTab" class="tab-section">
+        <div class="card">
+          <div class="card-title">Add Fuel Entry</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Vehicle Fleet Number</label><select id="fuelTrk"></select></div>
+            <div class="form-group"><label>Odometer at Fill (KM)</label><input id="fuelOdo" type="number" placeholder="Enter current KM"></div>
+            <div class="form-group"><label>Trip Start KM</label><input id="fuelStartKm" type="number" placeholder="KM at start of trip"></div>
+            <div class="form-group"><label>Trip End KM</label><input id="fuelEndKm" type="number" placeholder="KM at end of trip"></div>
+            <div class="form-group"><label>Total Fuel Cost (R)</label><input id="fuelCost" type="number" step="0.01" placeholder="e.g. 1500.50"></div>
+            <div class="form-group"><label>Price Per Liter (R)</label><input id="fuelPriceL" type="number" step="0.01" placeholder="e.g. 23.45"></div>
+          </div>
+          <div style="margin-top:24px; padding: 24px; background: var(--surface-2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+             <div style="display:flex; gap:15px; align-items:center;"><label>Slip Photo</label><input type="file" id="fuelSlipFile" style="border:none; padding:0; width:auto;"></div>
+             <button class="btn btn-primary" onclick="saveFuelLog()">⛽ Save Fuel Record</button>
+          </div>
         </div>
       </div>
 
@@ -218,7 +248,7 @@
             <div class="section-title">Fluids & Engine</div>
             <div class="inspect-item"><label>Coolant Level</label><select id="chkCoolant"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Engine Oil Level</label><select id="chkOil"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
-            <div class="inspect-item"><label>Clutch Fluid</label><select id="chkClutch"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
+            <div class="inspect-item"><label>Clutch Fluid</label><select id="chkClutchFluid"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Steering Fluid</label><select id="chkSteeringFluid"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Diesel Level</label><select id="chkDieselLevel"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
             <div class="inspect-item"><label>Tank Caps</label><select id="chkTankCaps"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>
@@ -394,13 +424,17 @@
           <div class="card-title">Export Inspection Logs</div>
           <div style="display:flex; gap:15px;"><button class="btn btn-ghost" onclick="generateInspectionPDF()">📋 PDF History</button><button class="btn btn-primary" style="background:#16a34a;" onclick="generateInspectionExcel()">📈 Excel Export</button></div>
         </div>
+        <div class="card">
+          <div class="card-title">Export Fuel Logs</div>
+          <div style="display:flex; gap:15px;"><button class="btn btn-primary" style="background:var(--brand);" onclick="generateFuelExcel()">⛽ Excel Export</button></div>
+        </div>
       </div>
     </main>
   </div>
 </div>
 
 <div id="inspectModal" class="modal-overlay hidden">
-  <div class="modal"><span class="modal-close" onclick="closeInspectModal()">×</span><h2 id="modalTitle" style="color:var(--brand); margin-bottom:10px;">Inspection Detail</h2><div id="modalMeta" style="margin-bottom:30px; padding-bottom:15px; border-bottom:1px solid #eee;"></div><div class="check-grid" id="modalChecks"></div><div id="modalComments" style="margin-top:30px; padding:20px; background:var(--danger-light); border-radius:12px; border:1px solid #fca5a5;" class="hidden"></div></div>
+  <div class="modal"><span class="modal-close" onclick="closeInspectModal()">×</span><h2 id="modalTitle" style="color:var(--brand); margin-bottom:10px;">Detail View</h2><div id="modalMeta" style="margin-bottom:30px; padding-bottom:15px; border-bottom:1px solid #eee;"></div><div class="check-grid" id="modalChecks"></div><div id="modalComments" style="margin-top:30px; padding:20px; background:var(--danger-light); border-radius:12px; border:1px solid #fca5a5;" class="hidden"></div><div id="modalImageArea" style="margin-top:20px;"></div></div>
 </div>
 
 <div id="toast-wrap" style="position:fixed; bottom:24px; right:24px; z-index:9999;"></div>
@@ -415,7 +449,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 const cfg = { apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8", authDomain: "fleet-compliance-app.firebaseapp.com", projectId: "fleet-compliance-app", storageBucket: "fleet-compliance-app.firebasestorage.app", messagingSenderId: "839373661347", appId: "1:839373661347:web:c6704a138194e2b17a0b16", measurementId: "G-E05H3WEPN6" };
 const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), storage = getStorage(app), functions = getFunctions(app);
 
-let profile = null, docs = [], users = [], inspections = [];
+let profile = null, docs = [], users = [], inspections = [], fuelLogs = [];
 
 const isMC = () => {
   const role = (profile?.role || "").toLowerCase();
@@ -461,11 +495,18 @@ async function loadData() {
     fillSelect("selDrv", drNames);
     fillSelect("selTrk", isDriverUser ? [] : trNumbers);
     fillSelect("insTrk", trNumbers);
+    fillSelect("fuelTrk", trNumbers);
     fillSelect("selType", dtNames);
 
     if (!isDriverUser) {
       const insSnap = await getDocs(query(collection(db, "inspections"), orderBy("timestamp", "desc")));
       inspections = []; insSnap.forEach(d => inspections.push({ id: d.id, ...d.data() }));
+
+      const fuelSnap = await getDocs(query(collection(db, "fuelLogs"), orderBy("timestamp", "desc")));
+      fuelLogs = []; fuelSnap.forEach(d => fuelLogs.push({ id: d.id, ...d.data() }));
+    } else {
+      const fuelSnap = await getDocs(query(collection(db, "fuelLogs"), where("driver", "==", me)));
+      fuelLogs = []; fuelSnap.forEach(d => fuelLogs.push({ id: d.id, ...d.data() }));
     }
     renderUI();
   } catch (e) { console.error(e); toast("Data Sync Error", "error"); } finally { setLoad(false); }
@@ -485,6 +526,7 @@ function renderUI() {
     renderBrowse();
     if (hasStaffAccess) renderUsersList();
     renderInspections();
+    renderFuelLogs();
   }
   const urgent = docs.filter(d => getStatus(d.date).urgent);
   document.getElementById("urgentList").innerHTML = urgent.length ? urgent.map(d => `<div class="doc-item"><div style="display:flex; justify-content:space-between;"><div><strong>${d.documentType}</strong><br><small>${d.ownerName}</small></div><div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div>${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View</button>` : ''}</div>`).join("") : "<div style='text-align:center; padding:40px; color:#999;'>✅ All Compliance Clear</div>";
@@ -533,6 +575,25 @@ window.renderInspections = () => {
     </div>`).join("") || "<div style='padding:40px; text-align:center;'>No records found.</div>";
 };
 
+window.renderFuelLogs = () => {
+  const area = document.getElementById("fuelLogsList"); if (!area) return;
+  const search = document.getElementById("fuelSearch").value.toLowerCase();
+  const filtered = fuelLogs.filter(f => (f.truck || "").toLowerCase().includes(search) || (f.driver || "").toLowerCase().includes(search));
+  area.innerHTML = filtered.map(f => `
+    <div class="doc-item">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div><strong>🚛 Truck #${f.truck}</strong><br><small>Driver: ${f.driver}</small></div>
+        <div style="text-align:right;"><span class="pill ok">R${f.cost}</span><br><small>${new Date(f.timestamp).toLocaleDateString()}</small></div>
+      </div>
+      <div class="doc-meta">
+        <span class="pill">Start: ${f.startKm} KM</span><span class="pill">End: ${f.endKm} KM</span><span class="pill">Price/L: R${f.priceL}</span>
+      </div>
+      <div style="margin-top:10px;">
+        ${f.fileUrl ? `<button class="btn btn-ghost btn-sm" onclick="window.open('${f.fileUrl}', '_blank')">📄 View Slip</button>` : ''}
+      </div>
+    </div>`).join("") || "<div style='padding:40px; text-align:center;'>No fuel logs found.</div>";
+};
+
 window.viewInspectDetail = (id) => {
   const i = inspections.find(x => x.id === id); if (!i) return;
   document.getElementById("modalTitle").textContent = `Inspection: ${i.truck}`;
@@ -550,6 +611,18 @@ window.saveInspect = async () => {
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.id.replace('chk','')] = s.value);
   setLoad(true, "Submitting...");
   try { await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error"); } finally { setLoad(false); }
+};
+
+window.saveFuelLog = async () => {
+  const t = document.getElementById("fuelTrk").value, o = document.getElementById("fuelOdo").value, sk = document.getElementById("fuelStartKm").value, ek = document.getElementById("fuelEndKm").value, c = document.getElementById("fuelCost").value, p = document.getElementById("fuelPriceL").value;
+  const file = document.getElementById("fuelSlipFile").files[0];
+  if (!t || !o || !sk || !ek || !c || !p) return alert("All fields are required.");
+  setLoad(true, "Uploading Slip & Saving...");
+  try {
+    let fileUrl = ""; if (file) { const refS = ref(storage, `fuel_slips/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
+    await addDoc(collection(db, "fuelLogs"), { truck: t, odo: o, startKm: sk, endKm: ek, cost: c, priceL: p, fileUrl: fileUrl, driver: getName(), timestamp: new Date().toISOString() });
+    alert("Fuel Record Saved"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) { alert("Save Error"); } finally { setLoad(false); }
 };
 
 window.saveDoc = async () => {
@@ -577,6 +650,14 @@ window.generateInspectionExcel = async () => {
     const rows = inspections.map(i => { const f = { "Date": new Date(i.timestamp).toLocaleString(), "Truck": i.truck, "Driver": i.driver, "Odometer": i.odo, "Comments": i.comments || "" }; if (i.checks) Object.entries(i.checks).forEach(([k,v])=> f[k]=v); return f; });
     const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inspections"); XLSX.writeFile(wb, `Fleet_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`);
   } catch (e) { alert("Excel Failed"); } finally { setLoad(false); }
+};
+
+window.generateFuelExcel = async () => {
+  setLoad(true, "Exporting Fuel Data...");
+  try {
+    const rows = fuelLogs.map(f => ({ "Date": new Date(f.timestamp).toLocaleString(), "Truck": f.truck, "Driver": f.driver, "Odometer": f.odo, "Start KM": f.startKm, "End KM": f.endKm, "Total Cost (R)": f.cost, "Price Per Liter (R)": f.priceL, "Slip URL": f.fileUrl || "None" }));
+    const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Fuel Logs"); XLSX.writeFile(wb, `Fleet_Fuel_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch (e) { alert("Fuel Export Failed"); } finally { setLoad(false); }
 };
 
 window.showTab = (id, btn) => {
