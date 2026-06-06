@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.6.4</title>
+  <title>PermitSphere v5.6.5</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -43,7 +43,7 @@
     .nav-btn:hover { background: var(--brand-light); color: var(--brand); }
     .nav-btn.active { background: var(--brand); color: #fff !important; font-weight: 600; box-shadow: 0 4px 12px rgba(90,45,130,0.2); }
 
-    .tab-section { display: none; } /* Critical Fix: Hide tabs by default */
+    .tab-section { display: none; }
 
     .card { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; }
     .card-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
@@ -571,7 +571,7 @@ const s4 = ["Oil Leaks","Water Leaks","Fuel Leaks","Fuel Tank Secure","Air Tanks
 const s5 = ["Straps & Ratchets","Tarpaulin","Nets","Chains","Binders/Saturns","Dunnage","Rubber Strips","Corner Plates","Jack","Tools/Spanner","Spare Wheel","Stop Blocks","Warning Triangles","Fire Ext.","Ext. Expiry Date","Haz Diamond","Placard Holders"];
 const s6 = ["Fire Retard. Overall","Refl. Vest","Safety Boots","Helmet","Eye Protection","Ear Plugs","Dust Mask","Gloves","Safety Harness","First Aid Kit"];
 
-function fillInsp(id, list) { document.getElementById(id).innerHTML = list.map(c => `<div class="inspect-item"><label>${c}</label><select id="chk${c.replace(/[^a-z0-9]/gi,'')}"><option value="OK">OK</option><option value="Defective">Defective</option><option value="Yes">Yes</option><option value="No">No</option><option value="None">None</option><option value="Done">Done</option></select></div>`).join(""); }
+function fillInsp(id, list) { document.getElementById(id).innerHTML = list.map(c => `<div class="inspect-item"><label>${c}</label><select id="chk${c.replace(/[^a-z0-9]/gi,'')}"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>`).join(""); }
 fillInsp("inspSect1", s1); fillInsp("inspSect2", s2); fillInsp("inspSect3", s3); fillInsp("inspSect4", s4); fillInsp("inspSect5", s5); fillInsp("inspSect6", s6);
 
 window.showTab = (id, btn) => {
