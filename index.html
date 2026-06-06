@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.6.2</title>
+  <title>PermitSphere v5.6.5</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -32,6 +32,7 @@
     .user-chip { background: rgba(255,255,255,.12); border-radius: 99px; padding: 6px 16px; display: flex; align-items: center; gap: 10px; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
     .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
     .btn-logout { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .btn-logout:hover { background: rgba(255,255,255,0.25); }
 
     .app-layout { display: flex; min-height: calc(100vh - 82px); max-width: 1400px; margin: 0 auto; }
     .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 12px; flex-shrink: 0; position: sticky; top: 82px; height: calc(100vh - 82px); overflow-y: auto; }
@@ -41,7 +42,8 @@
     .nav-btn { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; padding: 12px 16px; font-size: 15px; font-weight: 500; color: var(--text-2); cursor: pointer; text-align: left; border-radius: 10px; margin-bottom: 4px; transition: 0.2s; }
     .nav-btn:hover { background: var(--brand-light); color: var(--brand); }
     .nav-btn.active { background: var(--brand); color: #fff !important; font-weight: 600; box-shadow: 0 4px 12px rgba(90,45,130,0.2); }
-    .nav-btn.active span { color: #fff !important; }
+
+    .tab-section { display: none; }
 
     .card { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; }
     .card-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
@@ -52,20 +54,23 @@
     .stat-label { font-size: 13px; font-weight: 600; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
     .stat-num { font-size: 36px; font-weight: 700; color: var(--text); }
 
-    .doc-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; background: var(--surface-2); }
+    .doc-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; background: var(--surface-2); border-left: 4px solid var(--brand); }
     .doc-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #fff; border: 1px solid var(--border); }
     .pill.expired { background: var(--danger-light); color: var(--danger); border-color: #fecaca; }
     .pill.warning { background: var(--warning-light); color: var(--warning); border-color: #fcd34d; }
     .pill.ok { background: var(--success-light); color: var(--success); border-color: #d1fae5; }
 
-    input, select, textarea { width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: var(--radius); font-size: 15px; font-family: inherit; outline: none; transition: 0.2s; background: #fff; color: var(--text); }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: var(--radius); font-size: 15px; font-family: inherit; outline: none; transition: 0.2s; background: #fff !important; color: var(--text) !important; }
     input:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-light); }
 
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius); border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-secondary { background: var(--accent); color: #fff; }
     .btn-ghost { background: var(--surface); color: var(--text-2); border: 1px solid var(--border-2); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
 
     .list-controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .search-box { flex: 1; min-width: 200px; position: relative; }
@@ -74,19 +79,21 @@
     .sort-box { width: 180px; }
 
     .browse-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .browse-item { padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; margin-bottom: 10px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; font-weight: 500; transition: 0.2s; }
-    .browse-item:hover { border-color: var(--brand); background: #fff; transform: translateX(4px); }
+    .browse-item { padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; margin-bottom: 10px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; font-weight: 600; transition: 0.2s; color: var(--text-2); }
+    .browse-item:hover { border-color: var(--brand); background: #fff; transform: translateX(4px); color: var(--brand); box-shadow: var(--shadow); }
 
     .fleet-group { margin-bottom: 32px; }
     .fleet-header { background: var(--brand-light); color: var(--brand); padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; margin-bottom: 12px; border: 1px solid var(--brand); }
     .inspect-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--border); background: #fff; }
+    .status-ok { color: var(--success); font-weight: 700; }
+    .status-fail { color: var(--danger); font-weight: 700; }
 
-    .inspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+    .inspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
     .inspect-item { display: flex; flex-direction: column; gap: 5px; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 850px; max-height: 90vh; overflow: auto; padding: 40px; box-shadow: var(--shadow-lg); }
-    .modal-close { float: right; font-size: 28px; cursor: pointer; color: var(--text-3); font-weight: 300; }
+    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 850px; max-height: 90vh; overflow: auto; padding: 40px; box-shadow: var(--shadow-lg); position: relative; }
+    .modal-close { position: absolute; right: 24px; top: 24px; font-size: 28px; cursor: pointer; color: var(--text-3); }
 
     #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; }
     .spinner { width: 50px; height: 50px; border: 4px solid #eee; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -181,11 +188,11 @@
       <div id="addDocTab" class="tab-section">
         <div class="card">
           <div class="card-title">Register New Document</div>
-          <div class="form-grid">
+          <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
             <div class="form-group"><label>Asset Type</label><select id="ownerType" onchange="updateForm()"><option value="Driver">Driver</option><option value="Truck">Truck</option><option value="Trailer">Trailer</option></select></div>
             <div id="drvGrp" class="form-group"><label>Driver Name</label><select id="selDrv"></select></div>
             <div id="trkGrp" class="form-group hidden"><label>Fleet Number</label><select id="selTrk"></select></div>
-            <div class="form-group"><label>Document Category</label><div style="display:flex; gap:8px;"><select id="selType" style="flex:1;"></select><button class="btn btn-ghost" onclick="manageDocTypes()">⚙️</button></div></div>
+            <div class="form-group"><label>Document Category</label><div style="display:flex; gap:8px;"><select id="selType" style="flex:1;"></select><button class="btn btn-ghost btn-sm" onclick="manageDocTypes()">⚙️</button></div></div>
             <div class="form-group"><label>Expiry Date</label><input id="expDate" type="date"></div>
           </div>
           <div id="typeManager" class="hidden" style="margin: 20px 0; padding: 20px; background: var(--bg); border-radius: 12px; border: 2px dashed var(--border);">
@@ -204,7 +211,7 @@
       <div id="inspectTab" class="tab-section">
         <div class="card">
           <div class="card-title">Vehicle & Odometer</div>
-          <div class="form-grid">
+          <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
              <div class="form-group"><label>Vehicle Fleet Number</label><select id="insTrk"></select></div>
              <div class="form-group"><label>Odometer Reading (KM)</label><input id="insOdo" type="number" placeholder="Enter current KM"></div>
           </div>
@@ -237,7 +244,7 @@
       <div id="fuelTab" class="tab-section">
         <div class="card">
           <div class="card-title">Add Fuel Entry</div>
-          <div class="form-grid">
+          <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
             <div class="form-group"><label>Vehicle Fleet Number</label><select id="fuelTrk"></select></div>
             <div class="form-group"><label>Odometer at Fill (KM)</label><input id="fuelOdo" type="number" placeholder="Enter current KM"></div>
             <div class="form-group"><label>Trip Start KM</label><input id="fuelStartKm" type="number" placeholder="KM at start of trip"></div>
@@ -267,7 +274,7 @@
       <div id="usersTab" class="tab-section">
         <div class="card">
           <div class="card-title">User Management</div>
-          <div class="form-grid">
+          <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
             <div class="form-group"><label>First Name</label><input id="newUserFirstName" type="text"></div>
             <div class="form-group"><label>Surname</label><input id="newUserLastName" type="text"></div>
             <div class="form-group"><label>Email</label><input id="newUserEmail" type="email"></div>
@@ -357,13 +364,19 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 const cfg = { apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8", authDomain: "fleet-compliance-app.firebaseapp.com", projectId: "fleet-compliance-app", storageBucket: "fleet-compliance-app.firebasestorage.app", messagingSenderId: "839373661347", appId: "1:839373661347:web:c6704a138194e2b17a0b16", measurementId: "G-E05H3WEPN6" };
 const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app), storage = getStorage(app), functions = getFunctions(app);
 
+// Global State
 let profile = null, docs = [], users = [], inspections = [], fuelLogs = [], driversList = [], trucksList = [], trailersList = [];
 
+// Permissions
 const isMC = () => {
-  const role = (profile?.role || "").toLowerCase();
-  return role === "manager" || role === "controller" || role === "admin";
+  if (!profile) return false;
+  const role = (profile.role || "").toLowerCase().trim();
+  return ["manager", "controller", "admin"].includes(role);
 };
-const isD = () => (profile?.role || "").toLowerCase() === "driver";
+const isD = () => {
+  if (!profile) return true; // Default to limited if unknown
+  return (profile.role || "").toLowerCase().trim() === "driver";
+};
 const getName = () => profile?.fullName || auth.currentUser?.email || "User";
 
 function setLoad(s, t = "Loading...") {
@@ -372,11 +385,13 @@ function setLoad(s, t = "Loading...") {
 }
 
 function toast(m, t) {
-  const w = document.getElementById("toast-wrap"), e = document.createElement("div");
+  const w = document.getElementById("toast-wrap");
+  const e = document.createElement("div");
   e.style = "background:var(--text);color:#fff;padding:12px 24px;border-radius:12px;box-shadow:var(--shadow-lg);margin-bottom:10px;font-size:14px;font-weight:600;opacity:1;transition:0.3s;";
   if(t === "error") e.style.background = "var(--danger)";
   if(t === "success") e.style.background = "var(--success)";
-  e.textContent = m; w.appendChild(e); setTimeout(() => { e.style.opacity = "0"; setTimeout(() => e.remove(), 300); }, 3000);
+  e.textContent = m; w.appendChild(e);
+  setTimeout(() => { e.style.opacity = "0"; setTimeout(() => e.remove(), 300); }, 3500);
 }
 
 function getStatus(d) {
@@ -390,18 +405,22 @@ function getStatus(d) {
 
 async function loadData() {
   setLoad(true, "Synchronizing Fleet Data...");
-  const me = getName(); const isDriverUser = isD();
-  try {
-    // 1. Docs
-    let q = isDriverUser ? query(collection(db, "documents"), where("ownerName", "==", me)) : collection(db, "documents");
-    const dSnap = await getDocs(q); docs = dSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const me = getName();
+  const isDriverUser = isD();
 
-    // 2. Base Assets
+  try {
+    // 1. Fetch Compliance Documents
+    let docRef = collection(db, "documents");
+    let q = isDriverUser ? query(docRef, where("ownerName", "==", me)) : docRef;
+    const docSnap = await getDocs(q);
+    docs = docSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 2. Fetch Assets (Wait for all to ensure selection boxes are full)
     const [drS, trS, trlS, dtS] = await Promise.all([
-      getDocs(collection(db, "drivers")),
-      getDocs(collection(db, "trucks")),
-      getDocs(collection(db, "trailers")),
-      getDocs(collection(db, "documentTypes"))
+      getDocs(collection(db, "drivers")).catch(() => ({ docs: [] })),
+      getDocs(collection(db, "trucks")).catch(() => ({ docs: [] })),
+      getDocs(collection(db, "trailers")).catch(() => ({ docs: [] })),
+      getDocs(collection(db, "documentTypes")).catch(() => ({ docs: [] }))
     ]);
 
     driversList = drS.docs.map(d => d.data());
@@ -421,24 +440,33 @@ async function loadData() {
 
     // 3. Inspections & Fuel
     if (!isDriverUser) {
-      const [insS, fS] = await Promise.all([getDocs(collection(db, "inspections")), getDocs(collection(db, "fuelLogs"))]);
+      const [insS, fS] = await Promise.all([
+        getDocs(collection(db, "inspections")),
+        getDocs(collection(db, "fuelLogs"))
+      ]);
       inspections = insS.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
       fuelLogs = fS.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
     } else {
-      const fS = await getDocs(query(collection(db, "fuelLogs"), where("driver", "==", me)));
-      fuelLogs = fS.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const fSnap = await getDocs(query(collection(db, "fuelLogs"), where("driver", "==", me)));
+      fuelLogs = fSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+      inspections = [];
     }
 
     renderUI();
-  } catch (e) { console.error(e); toast("Data Sync Error", "error"); } finally { setLoad(false); }
+  } catch (e) {
+    console.error("Sync Error Details:", e);
+    toast("Database Sync error. Please check internet connection.", "error");
+  } finally {
+    setLoad(false);
+  }
 }
 
 function renderUI() {
-  const hasStaff = isMC();
-  document.getElementById("mgrOnlyMenu").classList.toggle("hidden", !hasStaff);
+  const staff = isMC();
+  document.getElementById("mgrOnlyMenu").classList.toggle("hidden", !staff);
   document.getElementById("mgrStats").classList.toggle("hidden", isD());
 
-  if (hasStaff) {
+  if (staff) {
     document.getElementById("statTotal").textContent = docs.length;
     document.getElementById("statExpired").textContent = docs.filter(d => getStatus(d.date).text === "EXPIRED").length;
     document.getElementById("stat30").textContent = docs.filter(d => getStatus(d.date).text.includes("days")).length;
@@ -458,8 +486,8 @@ function renderUI() {
         <div><strong>${d.documentType}</strong><br><small>${d.ownerName}</small></div>
         <div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div>
       </div>
-      ${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View</button>` : ''}
-    </div>`).join("") : "<div style='text-align:center; padding:40px; color:#999;'>✅ All Compliance Clear</div>";
+      ${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View File</button>` : ''}
+    </div>`).join("") : "<div style='text-align:center; padding:40px; color:#999; font-weight:600;'>✅ All Compliance Clear</div>";
 
   renderArchiveList();
 }
@@ -505,7 +533,7 @@ window.renderFuelLogs = () => {
       </div>
       <div class="doc-meta"><span class="pill">${f.driver}</span><span class="pill">${new Date(f.timestamp).toLocaleDateString()}</span></div>
       ${f.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="window.open('${f.fileUrl}', '_blank')">📄 View Slip</button>` : ''}
-    </div>`).join("") || "<div style='padding:40px; text-align:center;'>No logs found.</div>";
+    </div>`).join("") || "<div style='padding:40px; text-align:center;'>No fuel logs found.</div>";
 };
 
 window.renderBrowse = () => {
@@ -531,11 +559,11 @@ window.renderUsersList = async () => {
   document.getElementById("usersListArea").innerHTML = list.map(u => `
     <div class="doc-item"><div style="display:flex; justify-content:space-between; align-items:center;">
       <div><strong>${u.fullName}</strong><br><small>${u.email} (${u.role})</small></div>
-      ${u.id !== auth.currentUser.uid ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="removeSystemUser('${u.id}')">Remove</button>` : ''}
+      ${u.id !== auth.currentUser.uid ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="removeSystemUser('${u.id}')">Remove Account</button>` : ''}
     </div></div>`).join("");
 };
 
-// Form Logic
+// Inspection Checklist Points
 const s1 = ["Coolant Level","Engine Oil Level","Clutch Fluid","Steering Fluid","Diesel Level","Tank Caps","License/CoF/Disc","Accident Damage","Paint Work"];
 const s2 = ["Tyre Pressures","Valve Caps","Valve Extensions","Wheel Nuts/Ind.","Smooth Tyres","Damaged Tyres","Steering Function","Exhaust Brake","Retarder Function","Door Locks"];
 const s3 = ["Warning Lights","Low Air/Brakes","Wipers Function","Heater Function","All Lights/Ind.","Seat Belt","Drivers Seat","Mirrors","Loose Items","Footbrake","Handbrake","Oil Press Normal","Warn Lights Off","Air Press Full"];
@@ -543,17 +571,18 @@ const s4 = ["Oil Leaks","Water Leaks","Fuel Leaks","Fuel Tank Secure","Air Tanks
 const s5 = ["Straps & Ratchets","Tarpaulin","Nets","Chains","Binders/Saturns","Dunnage","Rubber Strips","Corner Plates","Jack","Tools/Spanner","Spare Wheel","Stop Blocks","Warning Triangles","Fire Ext.","Ext. Expiry Date","Haz Diamond","Placard Holders"];
 const s6 = ["Fire Retard. Overall","Refl. Vest","Safety Boots","Helmet","Eye Protection","Ear Plugs","Dust Mask","Gloves","Safety Harness","First Aid Kit"];
 
-function fillInsp(id, list) { document.getElementById(id).innerHTML = list.map(c => `<div class="inspect-item"><label>${c}</label><select id="chk${c.replace(/[^a-z0-9]/gi,'')}"><option value="OK">OK</option><option value="Defective">Defective</option><option value="Yes">Yes</option><option value="No">No</option><option value="None">None</option><option value="Done">Done</option></select></div>`).join(""); }
+function fillInsp(id, list) { document.getElementById(id).innerHTML = list.map(c => `<div class="inspect-item"><label>${c}</label><select id="chk${c.replace(/[^a-z0-9]/gi,'')}"><option value="OK">OK</option><option value="Defective">Defective</option></select></div>`).join(""); }
 fillInsp("inspSect1", s1); fillInsp("inspSect2", s2); fillInsp("inspSect3", s3); fillInsp("inspSect4", s4); fillInsp("inspSect5", s5); fillInsp("inspSect6", s6);
 
 window.showTab = (id, btn) => {
   document.querySelectorAll(".tab-section").forEach(el => el.style.display = "none");
-  document.getElementById(id).style.display = "block";
+  const target = document.getElementById(id);
+  if (target) target.style.display = "block";
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
 };
 
-// Global Init
+// Authentication State
 onAuthStateChanged(auth, async (u) => {
   if (u) {
     const snap = await getDoc(doc(db, "users", u.uid));
@@ -563,16 +592,21 @@ onAuthStateChanged(auth, async (u) => {
     document.getElementById("userFull").textContent = getName();
     const av = document.getElementById("avatar"); if (av) av.textContent = getName()[0].toUpperCase();
     loadData();
-  } else { document.getElementById("authArea").classList.remove("hidden"); document.getElementById("appArea").classList.add("hidden"); setLoad(false); }
+  } else {
+    document.getElementById("authArea").classList.remove("hidden");
+    document.getElementById("appArea").classList.add("hidden");
+    setLoad(false);
+  }
 });
 
-// Boilerplate Helpers
+// Action Helpers
 function fillSelect(id, vals) { const el = document.getElementById(id); if (el) el.innerHTML = `<option value="">Select...</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join(""); }
 window.updateForm = () => { const v = document.getElementById("ownerType").value; document.getElementById("drvGrp").classList.toggle("hidden", v !== "Driver"); document.getElementById("trkGrp").classList.toggle("hidden", v !== "Truck" && v !== "Trailer"); };
 window.resetDocForm = () => { document.getElementById("expDate").value = ""; document.getElementById("fileInput").value = ""; };
 window.logoutUser = () => signOut(auth);
-window.loginUser = async () => { const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value; try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed"); setLoad(false); } };
+window.loginUser = async () => { const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value; try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed: Incorrect email or password."); setLoad(false); } };
 window.closeInspectModal = () => document.getElementById("inspectModal").classList.add("hidden");
+
 window.viewInspectDetail = (id) => {
   const i = inspections.find(x => x.id === id); if (!i) return;
   document.getElementById("modalTitle").textContent = `Inspection: ${i.truck}`;
@@ -581,48 +615,55 @@ window.viewInspectDetail = (id) => {
   const comm = document.getElementById("modalComments"); if (i.comments) { comm.classList.remove("hidden"); comm.innerHTML = `<strong>Driver Comments:</strong><br>${i.comments}`; } else comm.classList.add("hidden");
   document.getElementById("inspectModal").classList.remove("hidden");
 };
+
 window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required: Vehicle and Odometer");
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.previousElementSibling.innerText] = s.value);
   setLoad(true, "Submitting...");
-  try { await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error"); } finally { setLoad(false); }
+  try { await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error. Try again."); } finally { setLoad(false); }
 };
+
 window.saveFuelLog = async () => {
   const t = document.getElementById("fuelTrk").value, o = document.getElementById("fuelOdo").value, sk = document.getElementById("fuelStartKm").value, ek = document.getElementById("fuelEndKm").value, c = document.getElementById("fuelCost").value, p = document.getElementById("fuelPriceL").value;
   const file = document.getElementById("fuelSlipFile").files[0];
   if (!t || !o || !sk || !ek || !c || !p) return alert("All fields are required.");
-  setLoad(true, "Saving...");
+  setLoad(true, "Saving Fuel Data...");
   try {
     let fileUrl = ""; if (file) { const refS = ref(storage, `fuel_slips/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
     await addDoc(collection(db, "fuelLogs"), { truck: t, odo: o, startKm: sk, endKm: ek, cost: c, priceL: p, fileUrl: fileUrl, driver: getName(), timestamp: new Date().toISOString() });
-    alert("Fuel Record Saved"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
-  } catch (e) { alert("Save Error"); } finally { setLoad(false); }
+    alert("Fuel Record Saved Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) { alert("Save Error. Check internet."); } finally { setLoad(false); }
 };
+
 window.saveDoc = async () => {
   const ot = document.getElementById("ownerType").value, dt = document.getElementById("selType").value, ed = document.getElementById("expDate").value;
   const drv = document.getElementById("selDrv").value, trk = document.getElementById("selTrk").value;
   const on = isD() ? getName() : (ot === 'Driver' ? drv : trk); const file = document.getElementById("fileInput").files[0];
   if (!on || !dt || !ed) return alert("Required: Owner, Type, Date");
-  setLoad(true, "Saving...");
+  setLoad(true, "Saving Document...");
   try {
     let fileUrl = ""; if (file) { const refS = ref(storage, `documents/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
     await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
-    toast("Saved Successfully", "success"); resetDocForm(); loadData();
-  } catch (e) { alert("Save Failed"); } finally { setLoad(false); }
+    toast("Record Saved Successfully", "success"); resetDocForm(); loadData();
+  } catch (e) { alert("Save Failed. Database is busy."); } finally { setLoad(false); }
 };
+
 window.performOCR = async () => {
-  const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select image");
-  setLoad(true, "OCR Scanning...");
-  try { const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f); const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/); if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0]; await w.terminate(); toast("OCR Done", "success"); } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+  const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select an image first.");
+  setLoad(true, "OCR Scanning for Expiry Date...");
+  try { const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f); const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/); if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0]; await w.terminate(); toast("Date Extracted", "success"); } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
 };
+
+// Exports
 window.generateInspectionExcel = async () => {
-  setLoad(true, "Exporting...");
+  setLoad(true, "Exporting Inspections...");
   try {
     const rows = inspections.map(i => { const f = { "Date": new Date(i.timestamp).toLocaleString(), "Truck": i.truck, "Driver": i.driver, "Odometer": i.odo, "Comments": i.comments || "" }; if (i.checks) Object.entries(i.checks).forEach(([k,v])=> f[k]=v); return f; });
     const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inspections"); XLSX.writeFile(wb, `Fleet_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`);
-  } catch (e) { alert("Excel Failed"); } finally { setLoad(false); }
+  } catch (e) { alert("Excel Export Failed"); } finally { setLoad(false); }
 };
+
 window.generateFuelExcel = async () => {
   setLoad(true, "Exporting Fuel Data...");
   try {
@@ -630,17 +671,20 @@ window.generateFuelExcel = async () => {
     const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Fuel Logs"); XLSX.writeFile(wb, `Fleet_Fuel_${new Date().toISOString().split('T')[0]}.xlsx`);
   } catch (e) { alert("Fuel Export Failed"); } finally { setLoad(false); }
 };
+
+window.generatePDF = () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Compliance Report", 14, 20); let y = 30; docs.forEach(d => { doc.text(`${d.ownerName}: ${d.documentType} (${d.date})`, 14, y); y += 10; }); doc.save("Compliance_Report.pdf"); };
+window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerName, "Type": d.documentType, "Expiry": d.date })); const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Compliance"); XLSX.writeFile(wb, "Fleet_Compliance_Archive.xlsx"); };
+window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspection_Logs.pdf"); };
+
+// Management
 window.manageDocTypes = async () => { document.getElementById("typeManager").classList.toggle("hidden"); const snap = await getDocs(collection(db, "documentTypes")); document.getElementById("typeListArea").innerHTML = snap.docs.map(d => `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;"><span>${d.data().name}</span><button onclick="deleteDocType('${d.id}')" style="color:red; border:none; background:none; cursor:pointer;">✖</button></div>`).join(""); };
 window.addDocType = async () => { const n = document.getElementById("newTypeName").value; if (n) { await addDoc(collection(db, "documentTypes"), { name: n }); document.getElementById("newTypeName").value = ""; loadData(); window.manageDocTypes(); } };
-window.deleteDocType = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); window.manageDocTypes(); } };
-window.removeSystemUser = async (uid) => { if (!confirm("Are you sure?")) return; setLoad(true, "Removing..."); try { const delFunc = httpsCallable(functions, 'deleteAppUser'); await delFunc({ uid }); toast("User Removed", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } };
-window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } } };
-window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t && d.ownerName === n); const target = t === "Driver" ? document.getElementById("drDocs") : (t === "Truck" ? document.getElementById("trDocs") : document.getElementById("trlDocs")); target.innerHTML = list.length ? list.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date}</small></div>`).join("") : "No records."; };
-window.generatePDF = () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Compliance Report", 14, 20); let y = 30; docs.forEach(d => { doc.text(`${d.ownerName}: ${d.documentType} (${d.date})`, 14, y); y += 10; }); doc.save("Report.pdf"); };
-window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerName, "Type": d.documentType, "Expiry": d.date })); const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Compliance"); XLSX.writeFile(wb, "Data.xlsx"); };
-window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspections.pdf"); };
+window.deleteDocType = async (id) => { if (confirm("Delete this document category?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); window.manageDocTypes(); } };
+window.removeSystemUser = async (uid) => { if (!confirm("Are you sure you want to permanently remove this user?")) return; setLoad(true, "Removing User Account..."); try { const delFunc = httpsCallable(functions, 'deleteAppUser'); await delFunc({ uid }); toast("User Removed", "success"); loadData(); } catch (err) { alert("Error removing user: " + err.message); } finally { setLoad(false); } };
+window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating User Account..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created Successfully", "success"); loadData(); } catch (err) { alert("Creation Failed: " + err.message); } finally { setLoad(false); } } };
+window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t && d.ownerName === n); const target = t === "Driver" ? document.getElementById("drDocs") : (t === "Truck" ? document.getElementById("trDocs") : document.getElementById("trlDocs")); target.innerHTML = list.length ? list.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date}</small></div>`).join("") : "No records found."; };
 window.editDoc = (id) => { const d = docs.find(x => x.id === id); if (d) { document.getElementById("ownerType").value = d.ownerType; updateForm(); if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName; else document.getElementById("selTrk").value = d.ownerName; document.getElementById("selType").value = d.documentType; document.getElementById("expDate").value = d.date; showTab('addDocTab', null); } };
-window.deleteDocItem = async (id) => { if (confirm("Delete document?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
+window.deleteDocItem = async (id) => { if (confirm("Permanently delete document?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
 window.filterDash = (mode) => {
   let list = []; const title = document.getElementById("dashTitle");
   if (mode === 'all') { list = docs; title.textContent = "All Compliance Records"; }
