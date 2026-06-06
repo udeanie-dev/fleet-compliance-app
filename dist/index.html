@@ -499,14 +499,17 @@ async function loadData() {
     fillSelect("selType", dtNames);
 
     if (!isDriverUser) {
-      const insSnap = await getDocs(query(collection(db, "inspections"), orderBy("timestamp", "desc")));
+      const insSnap = await getDocs(collection(db, "inspections"));
       inspections = []; insSnap.forEach(d => inspections.push({ id: d.id, ...d.data() }));
+      inspections.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-      const fuelSnap = await getDocs(query(collection(db, "fuelLogs"), orderBy("timestamp", "desc")));
+      const fuelSnap = await getDocs(collection(db, "fuelLogs"));
       fuelLogs = []; fuelSnap.forEach(d => fuelLogs.push({ id: d.id, ...d.data() }));
+      fuelLogs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
     } else {
       const fuelSnap = await getDocs(query(collection(db, "fuelLogs"), where("driver", "==", me)));
       fuelLogs = []; fuelSnap.forEach(d => fuelLogs.push({ id: d.id, ...d.data() }));
+      fuelLogs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
     renderUI();
   } catch (e) { console.error(e); toast("Data Sync Error", "error"); } finally { setLoad(false); }
