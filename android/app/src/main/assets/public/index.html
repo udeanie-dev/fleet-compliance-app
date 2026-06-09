@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.6.7</title>
+  <title>PermitSphere v5.6.8</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -629,7 +629,7 @@ window.saveInspect = async () => {
   if (!t || !o) return alert("Required: Vehicle and Odometer");
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.previousElementSibling.innerText] = s.value);
   setLoad(true, "Submitting...");
-  try { await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error. Try again."); } finally { setLoad(false); }
+  try { await addDoc(collection(db, "inspections"), { truck: t, odo: parseFloat(o), checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error: " + e.message); } finally { setLoad(false); }
 };
 
 window.saveFuelLog = async () => {
@@ -639,9 +639,19 @@ window.saveFuelLog = async () => {
   setLoad(true, "Saving Fuel Data...");
   try {
     let fileUrl = ""; if (file) { const refS = ref(storage, `fuel_slips/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
-    await addDoc(collection(db, "fuelLogs"), { truck: t, odo: o, startKm: sk, endKm: ek, cost: c, priceL: p, fileUrl: fileUrl, driver: getName(), timestamp: new Date().toISOString() });
+    await addDoc(collection(db, "fuelLogs"), {
+      truck: t,
+      odo: parseInt(o),
+      startKm: parseInt(sk),
+      endKm: parseInt(ek),
+      cost: parseFloat(c),
+      priceL: parseFloat(p),
+      fileUrl: fileUrl,
+      driver: getName(),
+      timestamp: new Date().toISOString()
+    });
     alert("Fuel Record Saved Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
-  } catch (e) { alert("Save Error. Check internet."); } finally { setLoad(false); }
+  } catch (e) { alert("Save Error: " + e.message); } finally { setLoad(false); }
 };
 
 window.saveDoc = async () => {
@@ -654,7 +664,7 @@ window.saveDoc = async () => {
     let fileUrl = ""; if (file) { const refS = ref(storage, `documents/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
     await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
     toast("Record Saved Successfully", "success"); resetDocForm(); loadData();
-  } catch (e) { alert("Save Failed. Database is busy."); } finally { setLoad(false); }
+  } catch (e) { alert("Save Failed: " + e.message); } finally { setLoad(false); }
 };
 
 window.performOCR = async () => {
