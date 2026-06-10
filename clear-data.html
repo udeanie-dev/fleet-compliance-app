@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fresh Start - Clear Data</title>
+</head>
+<body>
+    <h1>Clearing System Logs...</h1>
+    <div id="status">Ready.</div>
+    <button onclick="clearSystem()">Click to PERMANENTLY Clear Inspections & Fuel Logs</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+        const cfg = { apiKey: "AIzaSyASAVnDUNW-zFqsacRXbsomiueMlgAXoU8", authDomain: "fleet-compliance-app.firebaseapp.com", projectId: "fleet-compliance-app", storageBucket: "fleet-compliance-app.firebasestorage.app", messagingSenderId: "839373661347", appId: "1:839373661347:web:c6704a138194e2b17a0b16" };
+        const app = initializeApp(cfg), db = getFirestore(app);
+
+        window.clearSystem = async () => {
+            if (!confirm("Are you sure you want to PERMANENTLY delete all Inspections and Fuel Logs? This cannot be undone.")) return;
+            const status = document.getElementById("status");
+            status.innerText = "Deleting...";
+
+            try {
+                // Clear Inspections
+                const insSnap = await getDocs(collection(db, "inspections"));
+                for (const d of insSnap.docs) { await deleteDoc(doc(db, "inspections", d.id)); }
+
+                // Clear Fuel Logs
+                const fuelSnap = await getDocs(collection(db, "fuelLogs"));
+                for (const d of fuelSnap.docs) { await deleteDoc(doc(db, "fuelLogs", d.id)); }
+
+                status.innerText = "SUCCESS: All inspections and fuel logs have been removed. The app is now clean.";
+                alert("Fresh Start Complete!");
+            } catch (e) {
+                status.innerText = "Error: " + e.message;
+                console.error(e);
+            }
+        };
+    </script>
+</body>
+</html>
