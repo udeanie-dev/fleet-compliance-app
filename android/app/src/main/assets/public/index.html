@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.6.8</title>
+  <title>PermitSphere v5.6.9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -95,6 +95,10 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .hidden { display: none !important; }
 
+    /* Action area for buttons and file inputs */
+    .form-actions { margin-top: 24px; padding: 24px; background: var(--surface-2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+    .form-actions-left { display: flex; gap: 15px; align-items: center; flex: 1; }
+
     @media (max-width: 768px) {
       .sidebar { width: 100%; height: auto; position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px solid var(--border); }
       .app-layout { flex-direction: column; }
@@ -102,6 +106,16 @@
       .inspect-row { grid-template-columns: 1fr 1fr; gap: 10px; }
       .inspect-row .btn { grid-column: span 2; }
       .browse-grid { grid-template-columns: 1fr; }
+
+      /* Mobile Button Stacking Fix */
+      .form-actions { flex-direction: column; align-items: stretch; padding: 16px; }
+      .form-actions-left { flex-direction: column; align-items: stretch; width: 100%; }
+      .form-actions button, .form-actions input[type="file"] { width: 100% !important; margin: 0 !important; }
+      .form-actions-left label { margin-bottom: 8px; font-weight: 600; }
+
+      /* Standard stacking for any button groups */
+      .btn-group { flex-direction: column; width: 100%; }
+      .btn-group .btn { width: 100%; }
     }
   </style>
 </head>
@@ -195,8 +209,11 @@
              <div style="display:flex; gap:10px; margin-top:10px;"><input id="newTypeName" type="text" placeholder="e.g. Hazardous Permit"><button class="btn btn-secondary" onclick="addDocType()">Add</button></div>
              <div id="typeListArea" style="margin-top:15px; max-height:150px; overflow:auto;"></div>
           </div>
-          <div style="margin-top:24px; padding: 24px; background: var(--surface-2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-             <div style="display:flex; gap:15px; align-items:center;"><input type="file" id="fileInput" style="border:none; padding:0; width:auto;"><button class="btn btn-ghost" onclick="performOCR()">🔍 OCR Scan</button></div>
+          <div class="form-actions">
+             <div class="form-actions-left">
+               <input type="file" id="fileInput" style="border:none; padding:0;">
+               <button class="btn btn-ghost" onclick="performOCR()">🔍 OCR Scan</button>
+             </div>
              <button class="btn btn-primary" onclick="saveDoc()">💾 Save Record</button>
           </div>
         </div>
@@ -247,8 +264,11 @@
             <div class="form-group"><label>Total Fuel Cost (R)</label><input id="fuelCost" type="number" step="0.01" placeholder="e.g. 1500.50"></div>
             <div class="form-group"><label>Price Per Liter (R)</label><input id="fuelPriceL" type="number" step="0.01" placeholder="e.g. 23.45"></div>
           </div>
-          <div style="margin-top:24px; padding: 24px; background: var(--surface-2); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-             <div style="display:flex; gap:15px; align-items:center;"><label>Slip Photo</label><input type="file" id="fuelSlipFile" style="border:none; padding:0; width:auto;"></div>
+          <div class="form-actions">
+             <div class="form-actions-left">
+               <label>Slip Photo</label>
+               <input type="file" id="fuelSlipFile" style="border:none; padding:0;">
+             </div>
              <button class="btn btn-primary" onclick="saveFuelLog()">⛽ Save Fuel Record</button>
           </div>
         </div>
@@ -328,15 +348,15 @@
       <div id="reportsTab" class="tab-section">
         <div class="card">
           <div class="card-title">Compliance Reports</div>
-          <div style="display:flex; gap:15px;"><button class="btn btn-ghost" onclick="generatePDF()">📄 PDF Report</button><button class="btn btn-primary" onclick="generateExcel()">📊 Excel Export</button></div>
+          <div class="btn-group" style="display:flex; gap:15px;"><button class="btn btn-ghost" onclick="generatePDF()">📄 PDF Report</button><button class="btn btn-primary" onclick="generateExcel()">📊 Excel Export</button></div>
         </div>
         <div class="card">
           <div class="card-title">Daily Inspections</div>
-          <div style="display:flex; gap:15px;"><button class="btn btn-ghost" onclick="generateInspectionPDF()">📋 PDF History</button><button class="btn btn-primary" style="background:#16a34a;" onclick="generateInspectionExcel()">📈 Excel Export</button></div>
+          <div class="btn-group" style="display:flex; gap:15px;"><button class="btn btn-ghost" onclick="generateInspectionPDF()">📋 PDF History</button><button class="btn btn-primary" style="background:#16a34a;" onclick="generateInspectionExcel()">📈 Excel Export</button></div>
         </div>
         <div class="card">
           <div class="card-title">Fuel Consumption</div>
-          <div style="display:flex; gap:15px;"><button class="btn btn-primary" style="background:var(--brand);" onclick="generateFuelExcel()">⛽ Excel Export</button></div>
+          <div class="btn-group" style="display:flex; gap:15px;"><button class="btn btn-primary" style="background:var(--brand);" onclick="generateFuelExcel()">⛽ Excel Export</button></div>
         </div>
       </div>
     </main>
