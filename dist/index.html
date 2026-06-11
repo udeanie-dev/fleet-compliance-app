@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.8.0</title>
+  <title>PermitSphere v5.8.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -91,9 +91,13 @@
     .inspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
     .inspect-item { display: flex; flex-direction: column; gap: 5px; }
 
+    /* Modal Fixes */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 850px; max-height: 90vh; overflow: auto; padding: 40px; box-shadow: var(--shadow-lg); position: relative; }
     .modal-close { position: absolute; right: 24px; top: 24px; font-size: 28px; cursor: pointer; color: var(--text-3); }
+
+    .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 15px; }
+    .check-item { padding: 10px 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: space-between; font-size: 13px; }
 
     #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; }
     .spinner { width: 50px; height: 50px; border: 4px solid #eee; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -397,6 +401,11 @@
           <div class="card-title">Expenses Data</div>
           <div class="btn-group" style="display:flex; gap:15px;"><button class="btn btn-primary" style="background:var(--brand);" onclick="exportExpensesCSV()">💰 Export all to CSV</button></div>
         </div>
+        <div id="adminCleanupArea" class="card hidden">
+          <div class="card-title" style="color:var(--danger);">⚠️ System Fresh Start</div>
+          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Fuel history for the entire company. Use this only for initial enrollment.</p>
+          <button class="btn" style="background:var(--danger); color:#fff; width:100%;" onclick="clearSystemData()">💣 Clear All Logs & Start Fresh</button>
+        </div>
       </div>
     </main>
   </div>
@@ -524,7 +533,7 @@ async function loadData() {
 
   // 🛡️ 5. Restricted Category List for Drivers
   const driverOnlyTypes = ["Drivers License/PDP", "Passport", "Visa", "Work Permit", "Conveyor Of Dangerous Goods", "Medical Certificate", "Fire Training Certificate"];
-  let dtNames = isDriverUser ? driverOnlyTypes : docTypesData.map(d=>d.name).sort();
+  let dtNames = isDriverUser ? driverOnlyTypes : [...new Set([...driverOnlyTypes, ...docTypesData.map(d=>d.name)])].sort();
 
   const manageBtn = document.getElementById("btnManageTypes");
   if (manageBtn) manageBtn.classList.toggle("hidden", isDriverUser);
@@ -548,6 +557,9 @@ function renderUI() {
 
   const mgrStats = document.getElementById("mgrStats");
   if (mgrStats) mgrStats.classList.toggle("hidden", isD());
+
+  const cleanupArea = document.getElementById("adminCleanupArea");
+  if (cleanupArea) cleanupArea.classList.toggle("hidden", !staff);
 
   if (staff) {
     document.getElementById("statTotal").textContent = docs.length;
@@ -718,10 +730,10 @@ window.renderExpenses = () => {
   if (!area) return;
 
   const filtered = expenses.filter(e =>
-    e.truckNumber.toLowerCase().includes(search) ||
-    e.driverName.toLowerCase().includes(search) ||
-    e.tripRef.toLowerCase().includes(search) ||
-    e.status.toLowerCase().includes(search)
+    (e.truckNumber || "").toLowerCase().includes(search) ||
+    (e.driverName || "").toLowerCase().includes(search) ||
+    (e.tripRef || "").toLowerCase().includes(search) ||
+    (e.status || "").toLowerCase().includes(search)
   );
 
   area.innerHTML = filtered.map(e => `
@@ -794,10 +806,10 @@ window.reviewExpense = async (status) => {
 window.exportExpensesCSV = () => {
   const search = document.getElementById("expSearch")?.value.toLowerCase() || "";
   const filtered = expenses.filter(e =>
-    e.truckNumber.toLowerCase().includes(search) ||
-    e.driverName.toLowerCase().includes(search) ||
-    e.tripRef.toLowerCase().includes(search) ||
-    e.status.toLowerCase().includes(search)
+    (e.truckNumber || "").toLowerCase().includes(search) ||
+    (e.driverName || "").toLowerCase().includes(search) ||
+    (e.tripRef || "").toLowerCase().includes(search) ||
+    (e.status || "").toLowerCase().includes(search)
   );
 
   const headers = ["Date", "Truck", "Driver", "Trip Ref", "Category", "Amount", "Currency", "Status", "Notes", "Review Comment"];
@@ -906,6 +918,15 @@ window.logoutUser = () => signOut(auth);
 window.loginUser = async () => { const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value; try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed: Incorrect email or password."); setLoad(false); } };
 window.closeInspectModal = () => document.getElementById("inspectModal").classList.add("hidden");
 
+window.viewInspectDetail = (id) => {
+  const i = inspections.find(x => x.id === id); if (!i) return;
+  document.getElementById("modalTitle").textContent = `Inspection: ${i.truck}`;
+  document.getElementById("modalMeta").innerHTML = `<strong>Driver:</strong> ${i.driver}<br><strong>Date:</strong> ${new Date(i.timestamp).toLocaleString()}<br><strong>Odometer:</strong> ${i.odo} KM`;
+  document.getElementById("modalChecks").innerHTML = Object.entries(i.checks).map(([key, val]) => `<div class="check-item" style="${val==='Defective'||val==='No' ? 'background:var(--danger-light);' : ''}"><span>${key}</span><strong>${val}</strong></div>`).join("");
+  const comm = document.getElementById("modalComments"); if (i.comments) { comm.classList.remove("hidden"); comm.innerHTML = `<strong>Driver Comments:</strong><br>${i.comments}`; } else comm.classList.add("hidden");
+  document.getElementById("inspectModal").classList.remove("hidden");
+};
+
 window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required: Vehicle and Odometer");
@@ -959,6 +980,23 @@ window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t &&
 window.editDoc = (id) => { const d = docs.find(x => x.id === id); if (d) { editingDocId = id; document.getElementById("ownerType").value = d.ownerType; updateForm(); if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName; else if (d.ownerType === 'Truck') document.getElementById("selTrk").value = d.ownerName; else document.getElementById("selTrl").value = d.ownerName; document.getElementById("selType").value = d.documentType; document.getElementById("expDate").value = d.date; document.getElementById("addDocTitle").textContent = "Edit Document Record"; document.getElementById("cancelEditBtn").classList.remove("hidden"); showTab('addDocTab', null); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
 window.deleteDocItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
 window.filterDash = (mode) => { let list = []; const title = document.getElementById("dashTitle"); if (mode === 'all') list = docs; else if (mode === 'expired') list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); else list = docs.filter(d => getStatus(d.date).text.includes("days") || getStatus(d.date).text === "DUE TODAY"); document.getElementById("urgentList").innerHTML = list.length ? list.map(d => `<div class="doc-item"><div style="display:flex; justify-content:space-between;"><div><strong>${d.documentType}</strong><br><small>${d.ownerName}</small></div><div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div></div>`).join("") : "✅ Clear"; };
+
+// 🧼 Critical Data Wipe Utility
+window.clearSystemData = async () => {
+  if (!confirm("🚨 WARNING: This will PERMANENTLY delete all Inspection and Expense history for the entire company. This cannot be undone. Proceed?")) return;
+  setLoad(true, "Clearing company logs...");
+  try {
+    const insSnap = await getDocs(collection(db, "inspections"));
+    for (const d of insSnap.docs) { await deleteDoc(doc(db, "inspections", d.id)); }
+    const expSnap = await getDocs(collection(db, "expenses"));
+    for (const d of expSnap.docs) { await deleteDoc(doc(db, "expenses", d.id)); }
+    toast("System Clear. Start Fresh Successful.", "success");
+    loadData();
+    showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) {
+    alert("Permission Error: Ensure you are logged in as a Manager/Admin. " + e.message);
+  } finally { setLoad(false); }
+};
 
 </script>
 </body>
