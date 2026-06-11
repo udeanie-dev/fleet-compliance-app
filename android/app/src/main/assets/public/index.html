@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.7.1</title>
+  <title>PermitSphere v5.7.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -69,7 +69,6 @@
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-secondary { background: var(--accent); color: #fff; }
     .btn-ghost { background: var(--surface); color: var(--text-2); border: 1px solid var(--border-2); }
-    .btn-sm { padding: 6px 12px; font-size: 13px; }
 
     .list-controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .search-box { flex: 1; min-width: 200px; position: relative; }
@@ -78,8 +77,8 @@
     .sort-box { width: 180px; }
 
     .browse-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .browse-item { padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; margin-bottom: 10px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; font-weight: 700; transition: 0.2s; color: var(--text-2); }
-    .browse-item:hover { border-color: var(--brand); background: #fff; transform: translateX(4px); color: var(--brand); box-shadow: var(--shadow); }
+    .browse-item { padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; margin-bottom: 10px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; font-weight: 700; transition: 0.2s; }
+    .browse-item:hover { border-color: var(--brand); background: #fff; transform: translateX(4px); }
 
     .fleet-group { margin-bottom: 32px; }
     .fleet-header { background: var(--brand-light); color: var(--brand); padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; margin-bottom: 12px; border: 1px solid var(--brand); }
@@ -89,8 +88,8 @@
     .inspect-item { display: flex; flex-direction: column; gap: 5px; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 850px; max-height: 90vh; overflow: auto; padding: 40px; box-shadow: var(--shadow-lg); position: relative; }
-    .modal-close { position: absolute; right: 24px; top: 24px; font-size: 28px; cursor: pointer; color: var(--text-3); }
+    .modal { background: #fff; border-radius: 20px; width: 100%; max-width: 850px; max-height: 90vh; overflow: auto; padding: 40px; box-shadow: var(--shadow-lg); }
+    .modal-close { float: right; font-size: 28px; cursor: pointer; color: var(--text-3); }
 
     #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; }
     .spinner { width: 50px; height: 50px; border: 4px solid #eee; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -214,8 +213,7 @@
           </div>
           <div class="form-actions">
              <div class="form-actions-left">
-               <input type="file" id="fileInput" style="border:none; padding:0;">
-               <button class="btn btn-ghost" onclick="performOCR()">🔍 OCR Scan</button>
+               <input type="file" id="fileInput" style="border:none; padding:0; width:auto;"><button class="btn btn-ghost" onclick="performOCR()">🔍 OCR Scan</button>
              </div>
              <button class="btn btn-primary" onclick="saveDoc()">💾 Save Record</button>
           </div>
@@ -361,11 +359,6 @@
           <div class="card-title">Fuel Consumption</div>
           <div class="btn-group" style="display:flex; gap:15px;"><button class="btn btn-primary" style="background:var(--brand);" onclick="generateFuelExcel()">⛽ Excel Export</button></div>
         </div>
-        <div id="adminCleanupArea" class="card hidden">
-          <div class="card-title" style="color:var(--danger);">⚠️ System Fresh Start</div>
-          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Fuel history for the entire company. Use this only for initial enrollment.</p>
-          <button class="btn" style="background:var(--danger); color:#fff; width:100%;" onclick="clearSystemData()">💣 Clear All Logs & Start Fresh</button>
-        </div>
       </div>
     </main>
   </div>
@@ -499,9 +492,6 @@ function renderUI() {
 
   const mgrStats = document.getElementById("mgrStats");
   if (mgrStats) mgrStats.classList.toggle("hidden", isD());
-
-  const cleanupArea = document.getElementById("adminCleanupArea");
-  if (cleanupArea) cleanupArea.classList.toggle("hidden", !staff);
 
   if (staff) {
     document.getElementById("statTotal").textContent = docs.length;
@@ -679,7 +669,7 @@ window.saveInspect = async () => {
   if (!t || !o) return alert("Required: Vehicle and Odometer");
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.previousElementSibling.innerText] = s.value);
   setLoad(true, "Submitting...");
-  try { await addDoc(collection(db, "inspections"), { truck: t, odo: parseFloat(o), checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error: " + e.message); } finally { setLoad(false); }
+  try { await addDoc(collection(db, "inspections"), { truck: t, odo: o, checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error. Try again."); } finally { setLoad(false); }
 };
 
 window.saveFuelLog = async () => {
@@ -689,11 +679,9 @@ window.saveFuelLog = async () => {
   setLoad(true, "Saving Fuel Data...");
   try {
     let fileUrl = ""; if (file) { const refS = ref(storage, `fuel_slips/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
-    await addDoc(collection(db, "fuelLogs"), {
-      truck: t, odo: parseInt(o), startKm: parseInt(sk), endKm: parseInt(ek), cost: parseFloat(c), priceL: parseFloat(p), fileUrl: fileUrl, driver: getName(), timestamp: new Date().toISOString()
-    });
+    await addDoc(collection(db, "fuelLogs"), { truck: t, odo: o, startKm: sk, endKm: ek, cost: c, priceL: p, fileUrl: fileUrl, driver: getName(), timestamp: new Date().toISOString() });
     alert("Fuel Record Saved Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash'));
-  } catch (e) { alert("Save Error: " + e.message); } finally { setLoad(false); }
+  } catch (e) { alert("Save Error. Check internet."); } finally { setLoad(false); }
 };
 
 window.saveDoc = async () => {
@@ -706,7 +694,7 @@ window.saveDoc = async () => {
     let fileUrl = ""; if (file) { const refS = ref(storage, `documents/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
     await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
     toast("Record Saved Successfully", "success"); resetDocForm(); loadData();
-  } catch (e) { alert("Save Failed: " + e.message); } finally { setLoad(false); }
+  } catch (e) { alert("Save Failed. Database is busy."); } finally { setLoad(false); }
 };
 
 window.performOCR = async () => {
@@ -752,23 +740,6 @@ window.filterDash = (mode) => {
   else if (mode === 'due') { list = docs.filter(d => getStatus(d.date).text.includes("days") || getStatus(d.date).text === "DUE TODAY"); title.textContent = "Upcoming Expirations (30 Days)"; }
   const area = document.getElementById("urgentList");
   area.innerHTML = list.length ? list.map(d => `<div class="doc-item"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-weight:700; font-size:16px;">${d.documentType}</div><div style="color:var(--text-2); font-size:13px;">${d.ownerName}</div></div><div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div>${d.fileUrl ? `<button class="btn btn-ghost btn-sm" style="margin-top:15px;" onclick="window.open('${d.fileUrl}', '_blank')">📄 View Document</button>` : ''}</div>`).join("") : "<div style='text-align:center; padding:40px; color:#999; font-weight:600;'>✅ No matching records.</div>";
-};
-
-// 🧼 Critical Data Wipe Utility
-window.clearSystemData = async () => {
-  if (!confirm("🚨 WARNING: This will PERMANENTLY delete all Inspection and Fuel history for the entire company. This cannot be undone. Proceed?")) return;
-  setLoad(true, "Clearing company logs...");
-  try {
-    const insSnap = await getDocs(collection(db, "inspections"));
-    for (const d of insSnap.docs) { await deleteDoc(doc(db, "inspections", d.id)); }
-    const fuelSnap = await getDocs(collection(db, "fuelLogs"));
-    for (const d of fuelSnap.docs) { await deleteDoc(doc(db, "fuelLogs", d.id)); }
-    toast("System Clear. Start Fresh Successful.", "success");
-    loadData();
-    showTab('dashboardTab', document.getElementById('btnDash'));
-  } catch (e) {
-    alert("Permission Error: Ensure you are logged in as a Manager/Admin. " + e.message);
-  } finally { setLoad(false); }
 };
 
 </script>
