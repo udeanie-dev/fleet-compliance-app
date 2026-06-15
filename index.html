@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.8.1</title>
+  <title>PermitSphere v5.8.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -653,7 +653,14 @@ window.deleteInspection = async (id) => {
   if (!isMC()) return alert("Managers only.");
   if (!confirm("Are you sure you want to delete this inspection?")) return;
   setLoad(true, "Deleting...");
-  try { await deleteDoc(doc(db, "inspections", id)); toast("Deleted Successfully", "success"); loadData(); } catch (e) { toast("Error deleting", "error"); } finally { setLoad(false); }
+  try {
+    await deleteDoc(doc(db, "inspections", id));
+    toast("Deleted Successfully", "success");
+    loadData();
+  } catch (e) {
+    console.error("Delete Error:", e);
+    alert("Delete Failed: " + e.message);
+  } finally { setLoad(false); }
 };
 
 // --- Expense Logic ---
@@ -987,14 +994,15 @@ window.clearSystemData = async () => {
   setLoad(true, "Clearing company logs...");
   try {
     const insSnap = await getDocs(collection(db, "inspections"));
-    for (const d of insSnap.docs) { await deleteDoc(doc(db, "inspections", d.id)); }
+    for (const d of insSnap.docs) { await deleteDoc(d.ref); }
     const expSnap = await getDocs(collection(db, "expenses"));
-    for (const d of expSnap.docs) { await deleteDoc(doc(db, "expenses", d.id)); }
-    toast("System Clear. Start Fresh Successful.", "success");
+    for (const d of expSnap.docs) { await deleteDoc(d.ref); }
+    toast("System Clear Successful.", "success");
     loadData();
     showTab('dashboardTab', document.getElementById('btnDash'));
   } catch (e) {
-    alert("Permission Error: Ensure you are logged in as a Manager/Admin. " + e.message);
+    console.error("Clear Error:", e);
+    alert("System Clear Failed: " + e.message);
   } finally { setLoad(false); }
 };
 
