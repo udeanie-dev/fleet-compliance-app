@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.8.5</title>
+  <title>PermitSphere v5.8.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -943,7 +943,22 @@ onAuthStateChanged(auth, async (u) => {
 // Boilerplate Helpers
 function fillSelect(id, vals) { const el = document.getElementById(id); if (el) el.innerHTML = `<option value="">Select...</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join(""); }
 window.updateForm = () => { const v = document.getElementById("ownerType").value; document.getElementById("drvGrp").classList.toggle("hidden", v !== "Driver"); document.getElementById("trkGrp").classList.toggle("hidden", v !== "Truck"); document.getElementById("trlGrp").classList.toggle("hidden", v !== "Trailer"); };
-window.resetDocForm = () => { editingDocId = null; document.getElementById("expDate").value = ""; document.getElementById("fileInput").value = ""; document.getElementById("addDocTitle").textContent = "Register New Document"; document.getElementById("cancelEditBtn").classList.add("hidden"); document.getElementById("ownerType").value = "Driver"; updateForm(); };
+window.resetDocForm = () => {
+  editingDocId = null;
+  document.getElementById("expDate").value = "";
+  document.getElementById("fileInput").value = "";
+  document.getElementById("addDocTitle").textContent = "Register New Document";
+  document.getElementById("cancelEditBtn").classList.add("hidden");
+  document.getElementById("ownerType").value = "Driver";
+
+  // 🧼 Essential: Clear all selection values
+  const drv = document.getElementById("selDrv"); if (drv) drv.value = "";
+  const trk = document.getElementById("selTrk"); if (trk) trk.value = "";
+  const trl = document.getElementById("selTrl"); if (trl) trl.value = "";
+  const type = document.getElementById("selType"); if (type) type.value = "";
+
+  updateForm();
+};
 window.cancelEdit = () => { resetDocForm(); toast("Edit cancelled", ""); };
 window.logoutUser = () => signOut(auth);
 window.loginUser = async () => { const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value; try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed: Incorrect email or password."); setLoad(false); } };
@@ -978,7 +993,18 @@ window.saveDoc = async () => {
   if (!on || !dt || !ed) return alert("Required: Owner, Type, Date");
   setLoad(true, editingDocId ? "Updating Document..." : "Saving Document...");
   try {
-    let fileUrl = ""; if (file) { const refS = ref(storage, `documents/${Date.now()}_${file.name}`); const resU = await uploadBytes(refS, file); fileUrl = await getDownloadURL(resU.ref); }
+    let fileUrl = "";
+    if (file) {
+      // 🚀 Optimization: Use Compressor for Compliance Docs too
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        fileToUpload = await compressImage(file);
+      }
+      const refS = ref(storage, `documents/${Date.now()}_${file.name}`);
+      const resU = await uploadBytes(refS, fileToUpload);
+      fileUrl = await getDownloadURL(resU.ref);
+    }
+
     if (editingDocId) {
       const updateData = { ownerType: ot, ownerName: on, documentType: dt, date: ed, updated: new Date().toISOString() };
       if (fileUrl) updateData.fileUrl = fileUrl;
@@ -989,7 +1015,10 @@ window.saveDoc = async () => {
       toast("Record Saved Successfully", "success");
     }
     resetDocForm(); loadData();
-  } catch (e) { alert("Save Failed."); } finally { setLoad(false); }
+  } catch (e) {
+    console.error("Save Error:", e);
+    alert("Save Failed: " + e.message);
+  } finally { setLoad(false); }
 };
 
 window.performOCR = async () => {
