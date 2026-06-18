@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.8.6</title>
+  <title>PermitSphere v5.9.0</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -403,7 +403,7 @@
         </div>
         <div id="adminCleanupArea" class="card hidden">
           <div class="card-title" style="color:var(--danger);">⚠️ System Fresh Start</div>
-          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Fuel history for the entire company. Use this only for initial enrollment.</p>
+          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Expense history for the entire company. Use this only for initial enrollment.</p>
           <button class="btn" style="background:var(--danger); color:#fff; width:100%;" onclick="clearSystemData()">💣 Clear All Logs & Start Fresh</button>
         </div>
       </div>
@@ -977,8 +977,22 @@ window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required: Vehicle and Odometer");
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.previousElementSibling.innerText] = s.value);
-  setLoad(true, "Submitting...");
-  try { await addDoc(collection(db, "inspections"), { truck: t, odo: parseFloat(o), checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error."); } finally { setLoad(false); }
+  setLoad(true, "Submitting Report...");
+  try {
+    await addDoc(collection(db, "inspections"), {
+        truck: t,
+        odo: parseFloat(o),
+        checks: res,
+        driver: getName(),
+        timestamp: new Date().toISOString()
+    });
+    alert("Inspection Submitted Successfully");
+    loadData();
+    showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) {
+    console.error("Inspection Error:", e);
+    alert("Submission Error: " + e.message);
+  } finally { setLoad(false); }
 };
 
 window.saveDoc = async () => {
@@ -989,8 +1003,10 @@ window.saveDoc = async () => {
   else if (ot==='Driver')  { on = drv; }
   else if (ot==='Truck')   { on = trk; }
   else                 { on = trl; }
+
   const file = document.getElementById("fileInput").files[0];
-  if (!on || !dt || !ed) return alert("Required: Owner, Type, Date");
+  if (!on || !dt || !ed) return alert("Required: Owner Name, Category, and Expiry Date.");
+
   setLoad(true, editingDocId ? "Updating Document..." : "Saving Document...");
   try {
     let fileUrl = "";
@@ -1023,8 +1039,32 @@ window.saveDoc = async () => {
 
 window.performOCR = async () => {
   const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select an image first.");
-  setLoad(true, "OCR Scanning...");
-  try { const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f); const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/); if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0]; await w.terminate(); toast("Date Extracted", "success"); } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+  setLoad(true, "OCR Scanning for Expiry Date...");
+  let worker;
+  try {
+    worker = await Tesseract.createWorker('eng');
+    const r = await worker.recognize(f);
+    const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/);
+    if (d) {
+        let dateStr = d[0];
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            // Check if YYYY/MM/DD or DD/MM/YYYY
+            if (parts[0].length === 4) dateStr = parts.join('-');
+            else dateStr = parts.reverse().join('-');
+        }
+        document.getElementById("expDate").value = dateStr;
+        toast("Date Extracted", "success");
+    } else {
+        toast("No date found. Enter manually.", "");
+    }
+  } catch (e) {
+    console.error("OCR Error:", e);
+    toast("OCR Error. Enter manually.", "error");
+  } finally {
+    if (worker) await worker.terminate();
+    setLoad(false);
+  }
 };
 
 window.generateInspectionExcel = async () => { setLoad(true, "Exporting..."); try { const rows = inspections.map(i => { const f = { "Date": new Date(i.timestamp).toLocaleString(), "Truck": i.truck, "Driver": i.driver, "Odometer": i.odo, "Comments": i.comments || "" }; if (i.checks) Object.entries(i.checks).forEach(([k,v])=> f[k]=v); return f; }); const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inspections"); XLSX.writeFile(wb, `Fleet_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`); } catch (e) { alert("Excel Export Failed"); } finally { setLoad(false); } };
