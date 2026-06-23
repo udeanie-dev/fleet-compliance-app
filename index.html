@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.9.8</title>
+  <title>PermitSphere v5.9.9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -504,50 +504,61 @@ async function loadData() {
   const me = getName();
   const isDriverUser = isD();
 
-  // 🛡️ 1. Fetch Documents
-  let docRef = collection(db, "documents");
-  let docQuery = isDriverUser ? query(docRef, where("ownerName", "==", me)) : docRef;
-  docs = await syncCollection("documents", docQuery);
+  try {
+    // 🛡️ 1. Fetch assets in parallel for much higher speed
+    const [docsSnap, drvSnap, trkSnap, trlSnap, docTypesSnap] = await Promise.all([
+      syncCollection("documents", isDriverUser ? query(collection(db, "documents"), where("ownerName", "==", me)) : null),
+      syncCollection("drivers"),
+      syncCollection("trucks"),
+      syncCollection("trailers"),
+      syncCollection("documentTypes")
+    ]);
 
-  // 🛡️ 2. Fetch Assets
-  driversList = await syncCollection("drivers");
-  trucksList = await syncCollection("trucks");
-  trailersList = await syncCollection("trailers");
-  const docTypesData = await syncCollection("documentTypes");
+    docs = docsSnap;
+    driversList = drvSnap;
+    trucksList = trkSnap;
+    trailersList = trlSnap;
+    const docTypesData = docTypesSnap;
 
-  // 🛡️ 3. Inspections & Expenses
-  if (!isDriverUser) {
-    inspections = await syncCollection("inspections");
-    expenses = await syncCollection("expenses");
-    inspections.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-    expenses.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-  } else {
-    expenses = await syncCollection("expenses", query(collection(db, "expenses"), where("driverName", "==", me)));
-    expenses.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-    inspections = [];
+    // 🛡️ 2. Fetch Logs in parallel
+    if (!isDriverUser) {
+      const [insSnap, expSnap] = await Promise.all([
+        syncCollection("inspections"),
+        syncCollection("expenses")
+      ]);
+      inspections = insSnap.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+      expenses = expSnap.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    } else {
+      expenses = await syncCollection("expenses", query(collection(db, "expenses"), where("driverName", "==", me)));
+      expenses.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      inspections = [];
+    }
+
+    // 🛠️ 3. Populate Dropdowns
+    const trNumbers = trucksList.map(d=>d.fleetNumber).sort();
+    const trlNumbers = trailersList.map(d=>d.fleetNumber).sort();
+    const drNames = driversList.map(d=>d.name).filter(n => !isDriverUser || n === me).sort();
+
+    const driverOnlyTypes = ["Drivers License/PDP", "Passport", "Visa", "Work Permit", "Conveyor Of Dangerous Goods", "Medical Certificate", "Fire Training Certificate"];
+    let dtNames = isDriverUser ? driverOnlyTypes : [...new Set([...driverOnlyTypes, ...docTypesData.map(d=>d.name)])].sort();
+
+    const manageBtn = document.getElementById("btnManageTypes");
+    if (manageBtn) manageBtn.classList.toggle("hidden", isDriverUser);
+
+    fillSelect("selDrv", drNames);
+    fillSelect("selTrk", isDriverUser ? [] : trNumbers);
+    fillSelect("selTrl", isDriverUser ? [] : trlNumbers);
+    fillSelect("insTrk", [...trNumbers, ...trlNumbers]);
+    fillSelect("expTrk", trNumbers);
+    fillSelect("selType", dtNames);
+
+    renderUI();
+  } catch (e) {
+    console.error("Master Sync Error:", e);
+    toast("Sync failed. Check connection.", "error");
+  } finally {
+    setLoad(false);
   }
-
-  // 🛠️ 4. Populate Dropdowns
-  const trNumbers = trucksList.map(d=>d.fleetNumber).sort();
-  const trlNumbers = trailersList.map(d=>d.fleetNumber).sort();
-  const drNames = driversList.map(d=>d.name).filter(n => !isDriverUser || n === me).sort();
-
-  // 🛡️ 5. Restricted Category List for Drivers
-  const driverOnlyTypes = ["Drivers License/PDP", "Passport", "Visa", "Work Permit", "Conveyor Of Dangerous Goods", "Medical Certificate", "Fire Training Certificate"];
-  let dtNames = isDriverUser ? driverOnlyTypes : [...new Set([...driverOnlyTypes, ...docTypesData.map(d=>d.name)])].sort();
-
-  const manageBtn = document.getElementById("btnManageTypes");
-  if (manageBtn) manageBtn.classList.toggle("hidden", isDriverUser);
-
-  fillSelect("selDrv", drNames);
-  fillSelect("selTrk", isDriverUser ? [] : trNumbers);
-  fillSelect("selTrl", isDriverUser ? [] : trlNumbers);
-  fillSelect("insTrk", [...trNumbers, ...trlNumbers]);
-  fillSelect("expTrk", trNumbers);
-  fillSelect("selType", dtNames);
-
-  renderUI();
-  setLoad(false);
 }
 
 function renderUI() {
@@ -674,19 +685,23 @@ window.saveExpense = async () => {
         am = document.getElementById("expAmount").value,
         cur = document.getElementById("expCurrency").value,
         n = document.getElementById("expNotes").value;
-  const file = document.getElementById("expFile").files[0];
+  const fileInput = document.getElementById("expFile");
+  const file = fileInput.files[0];
 
   if (!t || !tr || !d || !am) return alert("Required: Vehicle, Trip Ref, Date, and Amount.");
 
-  setLoad(true, "Compressing & Submitting... (Please Wait)");
   try {
     let receiptUrl = "";
     if (file) {
-      // 🚀 Optimization: Image Compression before upload
+      setLoad(true, "Compressing Image... (1/2)");
       const compressedFile = await compressImage(file);
+
+      setLoad(true, "Uploading Receipt... (2/2)");
       const refS = ref(storage, `receipts/${Date.now()}_${file.name}`);
       const resU = await uploadBytes(refS, compressedFile);
       receiptUrl = await getDownloadURL(resU.ref);
+    } else {
+      setLoad(true, "Saving Expense Data...");
     }
 
     await addDoc(collection(db, "expenses"), {
@@ -707,18 +722,24 @@ window.saveExpense = async () => {
     });
 
     toast("Expense Submitted Successfully", "success");
+
     // Clear form
     document.getElementById("expTripRef").value = "";
     document.getElementById("expAmount").value = "";
     document.getElementById("expNotes").value = "";
-    document.getElementById("expFile").value = "";
+    fileInput.value = "";
+
+    // Refresh history immediately
     await loadData();
   } catch (e) {
+    console.error("Expense Error:", e);
     alert("Submission Error: " + e.message);
-  } finally { setLoad(false); }
+  } finally {
+    setLoad(false);
+  }
 };
 
-// 🚀 Helper: Fast Client-side Image Compression
+// 🚀 Helper: High-Speed Client-side Image Compression
 async function compressImage(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -728,13 +749,14 @@ async function compressImage(file) {
       img.src = e.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
+        const MAX_WIDTH = 1000; // Optimized for mobile upload speed
         let width = img.width, height = img.height;
         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.7);
+        // Using 0.6 quality for maximum speed on mobile data
+        canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.6);
       };
     };
   });
@@ -743,17 +765,19 @@ async function compressImage(file) {
 window.renderMyExpenses = () => {
   const area = document.getElementById("myExpenseList");
   if (!area) return;
-  area.innerHTML = expenses.map(e => `
+  area.innerHTML = expenses.map(e => {
+    const status = e.status || "Pending";
+    return `
     <div class="doc-item">
       <div style="display:flex; justify-content:space-between;">
-        <strong>${e.category}</strong>
-        <span class="pill ${e.status.toLowerCase()}">${e.status}</span>
+        <strong>${e.category || "Expense"}</strong>
+        <span class="pill ${status.toLowerCase()}">${status}</span>
       </div>
-      <div style="font-size:13px; color:var(--text-2); margin-top:5px;">${e.date} | ${e.currency} ${e.amount}</div>
-      <div style="font-size:12px; color:var(--text-3);">${e.tripRef}</div>
+      <div style="font-size:13px; color:var(--text-2); margin-top:5px;">${e.date || ""} | ${e.currency || ""} ${e.amount || 0}</div>
+      <div style="font-size:12px; color:var(--text-3);">${e.tripRef || ""}</div>
       ${e.reviewComment ? `<div style="font-size:12px; color:var(--danger); margin-top:8px;"><em>Note: ${e.reviewComment}</em></div>` : ""}
-    </div>
-  `).join("") || "<div style='padding:20px; text-align:center;'>No submission history.</div>";
+    </div>`;
+  }).join("") || "<div style='padding:20px; text-align:center;'>No submission history.</div>";
 };
 
 window.renderExpenses = () => {
@@ -768,19 +792,21 @@ window.renderExpenses = () => {
     (e.status || "").toLowerCase().includes(search)
   );
 
-  area.innerHTML = filtered.map(e => `
+  area.innerHTML = filtered.map(e => {
+    const status = e.status || "Pending";
+    return `
     <div class="doc-item" onclick="viewExpenseDetail('${e.id}')" style="cursor:pointer;">
       <div style="display:flex; justify-content:space-between;">
-        <div><strong>🚛 ${e.truckNumber}</strong> - ${e.driverName}</div>
-        <span class="pill ${e.status.toLowerCase()}">${e.status}</span>
+        <div><strong>🚛 ${e.truckNumber || "N/A"}</strong> - ${e.driverName || "Unknown"}</div>
+        <span class="pill ${status.toLowerCase()}">${status}</span>
       </div>
       <div class="doc-meta">
-        <span class="pill">${e.date}</span>
-        <span class="pill ok">${e.currency} ${e.amount}</span>
-        <span class="pill">${e.category}</span>
+        <span class="pill">${e.date || ""}</span>
+        <span class="pill ok">${e.currency || ""} ${e.amount || 0}</span>
+        <span class="pill">${e.category || ""}</span>
       </div>
-    </div>
-  `).join("") || "<div style='padding:40px; text-align:center;'>No expenses found.</div>";
+    </div>`;
+  }).join("") || "<div style='padding:40px; text-align:center;'>No expenses found.</div>";
 };
 
 window.viewExpenseDetail = (id) => {
