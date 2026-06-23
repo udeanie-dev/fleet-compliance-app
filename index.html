@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v6.0.1</title>
+  <title>PermitSphere v6.0.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -967,6 +967,34 @@ window.showTab = (id, btn) => {
   if (btn) btn.classList.add("active");
 };
 
+// Push Notifications Setup
+async function initNotifications() {
+  if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+  const { PushNotifications } = window.Capacitor.Plugins;
+
+  let perm = await PushNotifications.checkPermissions();
+  if (perm.receive !== 'granted') {
+    perm = await PushNotifications.requestPermissions();
+  }
+  if (perm.receive !== 'granted') return;
+
+  await PushNotifications.register();
+
+  PushNotifications.addListener('registration', async (token) => {
+    console.log("FCM Token:", token.value);
+    if (auth.currentUser) {
+      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        fcmToken: token.value,
+        lastTokenUpdate: new Date().toISOString()
+      });
+    }
+  });
+
+  PushNotifications.addListener('registrationError', (err) => {
+    console.error("Push Registration Error:", err);
+  });
+}
+
 // Global Initialization
 onAuthStateChanged(auth, async (u) => {
   if (u) {
@@ -977,6 +1005,9 @@ onAuthStateChanged(auth, async (u) => {
       document.getElementById("appArea").classList.remove("hidden");
       document.getElementById("userFull").textContent = getName();
       const av = document.getElementById("avatar"); if (av) av.textContent = getName()[0].toUpperCase();
+
+      initNotifications(); // 🔔 Register for Push Notifications on Login
+
       await loadData();
     } catch (e) {
       console.error("Auth Startup Error:", e);
