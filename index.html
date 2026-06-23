@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v5.8.6</title>
+  <title>PermitSphere v5.9.8</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -47,7 +47,7 @@
     .card { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; }
     .card-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
 
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 32px; }
     .stat-card { background: var(--surface); border-radius: var(--radius); padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); transition: transform 0.2s; cursor: pointer; }
     .stat-card:hover { transform: translateY(-4px); border-color: var(--brand); }
     .stat-label { font-size: 13px; font-weight: 600; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
@@ -167,6 +167,7 @@
       <button class="nav-btn" onclick="showTab('allDocsTab',this)">📄 All Documents</button>
       <button class="nav-btn" onclick="showTab('inspectTab',this)">📋 Perform Check</button>
       <button class="nav-btn" onclick="showTab('expenseTab',this)">💸 Capture Expense</button>
+      <button class="nav-btn" onclick="loadData()" style="color:var(--accent); font-weight:700; border-top:1px solid #eee; margin-top:10px;">🔄 Sync Now</button>
 
       <div id="mgrOnlyMenu" class="hidden">
         <div class="nav-section">Administration</div>
@@ -403,7 +404,7 @@
         </div>
         <div id="adminCleanupArea" class="card hidden">
           <div class="card-title" style="color:var(--danger);">⚠️ System Fresh Start</div>
-          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Fuel history for the entire company. Use this only for initial enrollment.</p>
+          <p style="margin-bottom:20px; font-size:14px; color:var(--text-2);">This will permanently remove all Inspection and Expense history for the entire company. Use this only for initial enrollment.</p>
           <button class="btn" style="background:var(--danger); color:#fff; width:100%;" onclick="clearSystemData()">💣 Clear All Logs & Start Fresh</button>
         </div>
       </div>
@@ -656,7 +657,7 @@ window.deleteInspection = async (id) => {
   try {
     await deleteDoc(doc(db, "inspections", id));
     toast("Deleted Successfully", "success");
-    loadData();
+    await loadData();
   } catch (e) {
     console.error("Delete Error:", e);
     alert("Delete Failed: " + e.message);
@@ -711,7 +712,7 @@ window.saveExpense = async () => {
     document.getElementById("expAmount").value = "";
     document.getElementById("expNotes").value = "";
     document.getElementById("expFile").value = "";
-    loadData();
+    await loadData();
   } catch (e) {
     alert("Submission Error: " + e.message);
   } finally { setLoad(false); }
@@ -830,7 +831,7 @@ window.reviewExpense = async (status) => {
     });
     toast(`Expense ${status}`, "success");
     closeExpenseModal();
-    loadData();
+    await loadData();
   } catch (e) { toast("Update failed", "error"); } finally { setLoad(false); }
 };
 
@@ -927,8 +928,7 @@ onAuthStateChanged(auth, async (u) => {
       document.getElementById("appArea").classList.remove("hidden");
       document.getElementById("userFull").textContent = getName();
       const av = document.getElementById("avatar"); if (av) av.textContent = getName()[0].toUpperCase();
-      renderUI();
-      loadData();
+      await loadData();
     } catch (e) {
       console.error("Auth Startup Error:", e);
       toast("Auth connection error.", "error");
@@ -959,6 +959,14 @@ window.resetDocForm = () => {
 
   updateForm();
 };
+
+window.resetInspectForm = () => {
+  document.getElementById("insTrk").value = "";
+  document.getElementById("insOdo").value = "";
+  document.getElementById("insComments").value = "";
+  document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => s.value = "OK");
+};
+
 window.cancelEdit = () => { resetDocForm(); toast("Edit cancelled", ""); };
 window.logoutUser = () => signOut(auth);
 window.loginUser = async () => { const e = document.getElementById("loginEmail").value, p = document.getElementById("loginPassword").value; try { setLoad(true, "Connecting..."); await signInWithEmailAndPassword(auth, e, p); } catch (err) { alert("Login Failed: Incorrect email or password."); setLoad(false); } };
@@ -977,8 +985,23 @@ window.saveInspect = async () => {
   const t = document.getElementById("insTrk").value, o = document.getElementById("insOdo").value;
   if (!t || !o) return alert("Required: Vehicle and Odometer");
   const res = {}; document.querySelectorAll("#inspectTab select[id^='chk']").forEach(s => res[s.previousElementSibling.innerText] = s.value);
-  setLoad(true, "Submitting...");
-  try { await addDoc(collection(db, "inspections"), { truck: t, odo: parseFloat(o), checks: res, driver: getName(), timestamp: new Date().toISOString() }); alert("Inspection Submitted Successfully"); loadData(); showTab('dashboardTab', document.getElementById('btnDash')); } catch (e) { alert("Submission Error."); } finally { setLoad(false); }
+  setLoad(true, "Submitting Report...");
+  try {
+    await addDoc(collection(db, "inspections"), {
+        truck: t,
+        odo: parseFloat(o),
+        checks: res,
+        driver: getName(),
+        timestamp: new Date().toISOString()
+    });
+    alert("Inspection Submitted Successfully");
+    resetInspectForm();
+    await loadData();
+    showTab('dashboardTab', document.getElementById('btnDash'));
+  } catch (e) {
+    console.error("Inspection Error:", e);
+    alert("Submission Error: " + e.message);
+  } finally { setLoad(false); }
 };
 
 window.saveDoc = async () => {
@@ -989,8 +1012,10 @@ window.saveDoc = async () => {
   else if (ot==='Driver')  { on = drv; }
   else if (ot==='Truck')   { on = trk; }
   else                 { on = trl; }
+
   const file = document.getElementById("fileInput").files[0];
-  if (!on || !dt || !ed) return alert("Required: Owner, Type, Date");
+  if (!on || !dt || !ed) return alert("Required: Owner Name, Category, and Expiry Date.");
+
   setLoad(true, editingDocId ? "Updating Document..." : "Saving Document...");
   try {
     let fileUrl = "";
@@ -1014,7 +1039,8 @@ window.saveDoc = async () => {
       await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
       toast("Record Saved Successfully", "success");
     }
-    resetDocForm(); loadData();
+    resetDocForm();
+    await loadData();
   } catch (e) {
     console.error("Save Error:", e);
     alert("Save Failed: " + e.message);
@@ -1023,8 +1049,32 @@ window.saveDoc = async () => {
 
 window.performOCR = async () => {
   const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select an image first.");
-  setLoad(true, "OCR Scanning...");
-  try { const w = await Tesseract.createWorker('eng'); const r = await w.recognize(f); const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/); if (d) document.getElementById("expDate").value = d[0].includes('/') ? d[0].split('/').reverse().join('-') : d[0]; await w.terminate(); toast("Date Extracted", "success"); } catch (e) { toast("OCR Error", "error"); } finally { setLoad(false); }
+  setLoad(true, "OCR Scanning for Expiry Date...");
+  let worker;
+  try {
+    worker = await Tesseract.createWorker('eng');
+    const r = await worker.recognize(f);
+    const d = r.data.text.match(/(\d{4}-\d{2}-\d{2})|(\d{2}\/\d{2}\/\d{4})/);
+    if (d) {
+        let dateStr = d[0];
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            // Check if YYYY/MM/DD or DD/MM/YYYY
+            if (parts[0].length === 4) dateStr = parts.join('-');
+            else dateStr = parts.reverse().join('-');
+        }
+        document.getElementById("expDate").value = dateStr;
+        toast("Date Extracted", "success");
+    } else {
+        toast("No date found. Enter manually.", "");
+    }
+  } catch (e) {
+    console.error("OCR Error:", e);
+    toast("OCR Error. Enter manually.", "error");
+  } finally {
+    if (worker) await worker.terminate();
+    setLoad(false);
+  }
 };
 
 window.generateInspectionExcel = async () => { setLoad(true, "Exporting..."); try { const rows = inspections.map(i => { const f = { "Date": new Date(i.timestamp).toLocaleString(), "Truck": i.truck, "Driver": i.driver, "Odometer": i.odo, "Comments": i.comments || "" }; if (i.checks) Object.entries(i.checks).forEach(([k,v])=> f[k]=v); return f; }); const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Inspections"); XLSX.writeFile(wb, `Fleet_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`); } catch (e) { alert("Excel Export Failed"); } finally { setLoad(false); } };
@@ -1032,13 +1082,13 @@ window.generatePDF = () => { const { jsPDF: Doc } = window.jspdf; const doc = ne
 window.generateExcel = () => { const data = docs.map(d => ({ "Owner": d.ownerName, "Type": d.documentType, "Expiry": d.date })); const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Compliance"); XLSX.writeFile(wb, "Fleet_Compliance_Archive.xlsx"); };
 window.generateInspectionPDF = async () => { const { jsPDF: Doc } = window.jspdf; const doc = new Doc(); doc.text("Inspection Logs", 14, 20); let y = 30; inspections.forEach(i => { doc.text(`${i.truck} - ${i.driver} (${new Date(i.timestamp).toLocaleDateString()})`, 14, y); y += 10; }); doc.save("Inspection_Logs.pdf"); };
 window.manageDocTypes = async () => { document.getElementById("typeManager").classList.toggle("hidden"); const snap = await getDocs(collection(db, "documentTypes")); document.getElementById("typeListArea").innerHTML = snap.docs.map(d => `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;"><span>${d.data().name}</span><button onclick="deleteDocType('${d.id}')" style="color:red; border:none; background:none; cursor:pointer;">✖</button></div>`).join(""); };
-window.addDocType = async () => { const n = document.getElementById("newTypeName").value; if (n) { await addDoc(collection(db, "documentTypes"), { name: n }); document.getElementById("newTypeName").value = ""; loadData(); window.manageDocTypes(); } };
-window.deleteDocType = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documentTypes", id)); loadData(); window.manageDocTypes(); } };
-window.removeSystemUser = async (uid) => { if (!confirm("Sure?")) return; setLoad(true, "Removing..."); try { const delFunc = httpsCallable(functions, 'deleteAppUser'); await delFunc({ uid }); toast("User Removed", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } };
-window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created", "success"); loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } } };
+window.addDocType = async () => { const n = document.getElementById("newTypeName").value; if (n) { await addDoc(collection(db, "documentTypes"), { name: n }); document.getElementById("newTypeName").value = ""; await loadData(); window.manageDocTypes(); } };
+window.deleteDocType = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documentTypes", id)); await loadData(); window.manageDocTypes(); } };
+window.removeSystemUser = async (uid) => { if (!confirm("Sure?")) return; setLoad(true, "Removing..."); try { const delFunc = httpsCallable(functions, 'deleteAppUser'); await delFunc({ uid }); toast("User Removed", "success"); await loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } };
+window.createNewUser = async () => { const n = document.getElementById("newUserFirstName").value, s = document.getElementById("newUserLastName").value, e = document.getElementById("newUserEmail").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value; if(n && e && p) { setLoad(true, "Creating..."); try { const call = httpsCallable(functions, 'createAppUser'); await call({ name: n, surname: s, email: e, password: p, role: r }); toast("User Created", "success"); await loadData(); } catch (err) { alert(err.message); } finally { setLoad(false); } } };
 window.viewDocs = (t, n) => { const list = docs.filter(d => d.ownerType === t && d.ownerName === n); const target = t === "Driver" ? document.getElementById("drDocs") : (t === "Truck" ? document.getElementById("trDocs") : document.getElementById("trlDocs")); target.innerHTML = list.length ? list.map(d => `<div class="doc-item"><strong>${d.documentType}</strong><br><small>Expiry: ${d.date}</small></div>`).join("") : "No records found."; };
 window.editDoc = (id) => { const d = docs.find(x => x.id === id); if (d) { editingDocId = id; document.getElementById("ownerType").value = d.ownerType; updateForm(); if (d.ownerType === 'Driver') document.getElementById("selDrv").value = d.ownerName; else if (d.ownerType === 'Truck') document.getElementById("selTrk").value = d.ownerName; else document.getElementById("selTrl").value = d.ownerName; document.getElementById("selType").value = d.documentType; document.getElementById("expDate").value = d.date; document.getElementById("addDocTitle").textContent = "Edit Document Record"; document.getElementById("cancelEditBtn").classList.remove("hidden"); showTab('addDocTab', null); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
-window.deleteDocItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documents", id)); loadData(); } };
+window.deleteDocItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "documents", id)); await loadData(); } };
 window.filterDash = (mode) => { let list = []; const title = document.getElementById("dashTitle"); if (mode === 'all') list = docs; else if (mode === 'expired') list = docs.filter(d => getStatus(d.date).text === "EXPIRED"); else list = docs.filter(d => getStatus(d.date).text.includes("days") || getStatus(d.date).text === "DUE TODAY"); document.getElementById("urgentList").innerHTML = list.length ? list.map(d => `<div class="doc-item"><div style="display:flex; justify-content:space-between;"><div><strong>${d.documentType}</strong><br><small>${d.ownerName}</small></div><div class="doc-meta"><span class="pill ${getStatus(d.date).class}">${getStatus(d.date).text}</span><span class="pill">${d.date}</span></div></div></div>`).join("") : "✅ Clear"; };
 
 // 🧼 Critical Data Wipe Utility
@@ -1051,7 +1101,7 @@ window.clearSystemData = async () => {
     const expSnap = await getDocs(collection(db, "expenses"));
     for (const d of expSnap.docs) { await deleteDoc(d.ref); }
     toast("System Clear Successful.", "success");
-    loadData();
+    await loadData();
     showTab('dashboardTab', document.getElementById('btnDash'));
   } catch (e) {
     console.error("Clear Error:", e);
