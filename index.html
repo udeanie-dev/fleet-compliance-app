@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PermitSphere v6.1.0</title>
+  <title>PermitSphere v6.1.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <meta name="color-scheme" content="light dark">
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -547,6 +547,7 @@ async function loadData() {
     fillSelect("selType", dtNames);
 
     renderUI();
+    fixMissingDocEmails(); // 📧 Fix any records missing emails for reminders
   } catch (e) {
     console.error("Master Sync Error:", e);
     toast("Sync failed. Check connection.", "error");
@@ -1087,13 +1088,19 @@ window.saveDoc = async () => {
   const file = document.getElementById("fileInput").files[0];
   if (!on || !dt || !ed) return alert("Required: Owner Name, Category, and Expiry Date.");
 
+  // 📧 Critical: Get email for the notification engine
+  let ownerEmail = profile?.email || auth.currentUser?.email;
+  if (ot === 'Driver') {
+    const dObj = driversList.find(x => x.name === on);
+    if (dObj?.email) ownerEmail = dObj.email;
+  }
+
   try {
     let fileUrl = "";
     if (file) {
       setLoad(true, "Optimizing Image...");
       const fileToUpload = file.type.startsWith('image/') ? await compressImage(file) : file;
 
-      // Fixed: Integrated progress tracking for compliance docs too
       const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
       const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
@@ -1111,13 +1118,24 @@ window.saveDoc = async () => {
        setLoad(true, editingDocId ? "Updating..." : "Saving...");
     }
 
+    const docPayload = {
+      ownerType: ot,
+      ownerName: on,
+      documentType: dt,
+      date: ed,
+      email: ownerEmail, // 🔔 Needed for background reminders
+      updated: new Date().toISOString()
+    };
+
     if (editingDocId) {
-      const updateData = { ownerType: ot, ownerName: on, documentType: dt, date: ed, updated: new Date().toISOString() };
-      if (fileUrl) updateData.fileUrl = fileUrl;
-      await updateDoc(doc(db, "documents", editingDocId), updateData);
+      if (fileUrl) docPayload.fileUrl = fileUrl;
+      await updateDoc(doc(db, "documents", editingDocId), docPayload);
       toast("Record Updated Successfully", "success");
     } else {
-      await addDoc(collection(db, "documents"), { ownerType: ot, ownerName: on, documentType: dt, date: ed, fileUrl: fileUrl, created: new Date().toISOString(), addedBy: auth.currentUser.uid });
+      docPayload.fileUrl = fileUrl;
+      docPayload.created = new Date().toISOString();
+      docPayload.addedBy = auth.currentUser.uid;
+      await addDoc(collection(db, "documents"), docPayload);
       toast("Record Saved Successfully", "success");
     }
     resetDocForm();
@@ -1127,6 +1145,24 @@ window.saveDoc = async () => {
     alert("Save Failed: " + (e.message || e));
   } finally { setLoad(false); }
 };
+
+// 🧼 Retroactive Email Fix (Run once on sync if manager)
+async function fixMissingDocEmails() {
+  if (!isMC()) return;
+  const docsMissingEmail = docs.filter(d => !d.email);
+  if (docsMissingEmail.length === 0) return;
+
+  for (const d of docsMissingEmail) {
+    let email = profile?.email || auth.currentUser?.email;
+    if (d.ownerType === 'Driver') {
+       const drv = driversList.find(x => x.name === d.ownerName);
+       if (drv?.email) email = drv.email;
+    }
+    try {
+      await updateDoc(doc(db, "documents", d.id), { email: email });
+    } catch (err) { console.warn("Failed to fix email for doc", d.id); }
+  }
+}
 
 window.performOCR = async () => {
   const f = document.getElementById("fileInput").files[0]; if (!f) return alert("Select an image first.");
