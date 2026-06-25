@@ -1,0 +1,36 @@
+# PermitSphere Demonstration Readiness Task List
+
+- [x] Integrate Driver Expense Capture Module
+	- [x] Expense Submission form for Drivers (Truck, Trip, Date, Category, Amount, Receipt)
+	- [x] Receipt photo upload with instant client-side compression
+	- [x] Personal Submission History with Pending/Approved/Rejected badges
+	- [x] Manager Review Dashboard with Approve/Reject capability and comments
+	- [x] CSV Export for expense auditing
+- [x] Resolve Document Management Bugs
+	- [x] Fix Document Edit logic to update original records instead of duplicating
+	- [x] Preserve existing photos when editing other document details
+	- [x] Fix multi-upload form reset to allow seamless back-to-back uploads
+- [x] Implement Driver Restrictions & Compliance
+	- [x] Restrict Drivers to 7 specific mandatory categories
+	- [x] Hide category management (gear icon) from Driver role
+	- [x] Implement color-coded completeness scoring (e.g., 5/7) in Drivers List
+- [x] Performance & Reliability Overhaul
+	- [x] Implement Parallel Data Fetching for near-instant history loading
+	- [x] Integrate `uploadBytesResumable` for real-time upload percentage feedback
+	- [x] Add a 10-second fail-safe timeout to image compression to prevent hangs
+	- [x] Implement descriptive error messaging for database operations
+- [x] Mobile UI & UX Hardening
+	- [x] Fix horizontal scrolling bug on Android app by enforcing strict viewport bounds
+	- [x] Refactor sidebar into a mobile-first grid layout
+	- [x] Fix header alignment for user avatars and chips
+	- [x] Stack action buttons (Save, OCR, File Upload) vertically on mobile screens
+- [x] Notification System Integration
+	- [x] Auto-register FCM tokens for mobile devices upon login
+	- [x] Trigger instant push notifications for Expense Approvals and Rejections
+	- [x] Send Manager alerts for new expense submissions
+- [x] Administration & Data Utilities
+	- [x] Guarantee visibility of Trailers, Trucks, and Users tabs for Staff roles
+	- [x] Implement "Fresh Start" utility in Reports tab to wipe test data safely
+- [x] Final Production Audit
+	- [x] Verify line-by-line logic sync across Web, GitHub, and Android assets
+	- [x] Confirm billing delinquent errors are resolved via Google Cloud console

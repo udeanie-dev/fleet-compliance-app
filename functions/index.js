@@ -415,3 +415,40 @@ exports.onInspectionCreated = onDocumentCreated("inspections/{inspectId}", async
     }
   }
 });
+
+exports.onExpenseUpdated = onDocumentUpdated("expenses/{expenseId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  // Only notify if status changed
+  if (before.status === after.status) return;
+
+  const title = `Expense ${after.status}`;
+  const body = `Your ${after.category} expense for ${after.truckNumber} has been ${after.status.toLowerCase()}.`;
+
+  const driverProfile = await getUserProfile(after.driverId);
+  if (driverProfile && driverProfile.fcmToken) {
+    await sendPushNotification([driverProfile.fcmToken], title, body, {
+      type: "expense_update",
+      id: event.params.expenseId,
+      status: after.status
+    });
+  }
+});
+
+exports.onExpenseCreated = onDocumentCreated("expenses/{expenseId}", async (event) => {
+  const data = event.data.data();
+  const title = `New Expense: ${data.truckNumber}`;
+  const body = `${data.driverName} submitted a ${data.category} expense of ${data.currency} ${data.amount}.`;
+
+  const usersSnapshot = await db.collection("users").where("role", "in", ["Manager", "Controller"]).get();
+  const tokens = [];
+  usersSnapshot.forEach(doc => {
+    const u = doc.data();
+    if (u.fcmToken) tokens.push(u.fcmToken);
+  });
+
+  if (tokens.length > 0) {
+    await sendPushNotification(tokens, title, body, { type: "expense_new", id: event.params.expenseId });
+  }
+});
